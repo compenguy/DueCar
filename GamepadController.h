@@ -20,7 +20,12 @@ class GamepadController : public GamepadReportParser {
     }
 
   protected:
+    virtual void OnAnalogAxisChange(uint8_t id, GAMEPADAXISAINFO *);
+    virtual void OnDigitalAxisChange(uint8_t id, GAMEPADAXISDINFO *);
+    virtual void OnButtonChange(uint8_t id, GAMEPADBUTTONINFO *);
     virtual void OnUnknownReport(uint32_t bufsize, uint8_t *buf);
+
+    virtual void NotifyChange(GAMEPADINFO *info);
 
   private:
     HIDGamepad hostGamepad;

@@ -22,7 +22,7 @@ enum GAMEPADREPORTTYPE {
  * \brief GAMEPADAXISDINFO definition.
  */
 struct GAMEPADAXISDINFO {
-    bool bmAxisD;
+    uint8_t bmAxisD;
 };
 
 /**
@@ -57,8 +57,6 @@ struct GAMEPADINFO {
  * \class MouseReportParser definition.
  */
 class GamepadReportParser : public HIDReportParser {
-    GAMEPADINFO prevState[32];
-
   public:
     virtual void Parse(HID *hid, bool is_rpt_id, uint32_t len, uint8_t *buf);
 
@@ -67,6 +65,8 @@ class GamepadReportParser : public HIDReportParser {
     virtual void OnDigitalAxisChange(uint8_t id, GAMEPADAXISDINFO *){};
     virtual void OnButtonChange(uint8_t id, GAMEPADBUTTONINFO *){};
     virtual void OnUnknownReport(uint32_t bufsize, uint8_t *buf){};
+
+    GAMEPADINFO prevState[32];
 };
 
 #define totalEndpoints 2
