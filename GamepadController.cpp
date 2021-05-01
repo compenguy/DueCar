@@ -4,12 +4,9 @@ extern "C" {
 void __gamepadControllerEmptyCallback() {}
 }
 
-void unhandledInput()
+void unhandledInput(uint32_t bufsize, uint8_t *buf)
     __attribute__((weak, alias("__gamepadControllerEmptyCallback")));
 
 void GamepadController::OnUnknownReport(uint32_t bufsize, uint8_t *buf) {
-    for (int i = 0; i < bufsize && i < 8; i++) {
-        lastBuf[i] = buf[i];
-    }
-    lastRead = false;
+    unhandledInput(bufsize, buf);
 }
