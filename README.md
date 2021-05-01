@@ -78,8 +78,11 @@ that corresponds with the action we want the car to take.
 | LMSB |   |   | LLSB | RMSB |   |   | RLSB |
 
 LMSB - Left motor channel, most significant bit (2s complement)
+
 LLSB - Left motor channel, least significant bit (2s complement)
+
 RMSB - Right motor channel, most significant bit (2s complement)
+
 RLSB - Right motor channel, least significant bit (2s complement)
 
 Four bits of 2s complement should give us a range of -8 to +7, which should
