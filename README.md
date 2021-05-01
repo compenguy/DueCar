@@ -34,7 +34,7 @@ BLE link, which looks a lot like a serial connection.
 
 This is the part that took me the longest to get working. The Arduino USBHost
 library is a relatively complex bit of machinery, and it took a bit for me to
-1) figure out how to extend it to support a HID-but-non-HID-boot device, and 2)
+(1) figure out how to extend it to support a HID-but-non-HID-boot device, and (2)
 how to debug my work along the way.
 
 Eventually I achieved success with my generic [hidgamepad](remote/hidgamepad.h)
