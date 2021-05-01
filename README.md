@@ -19,7 +19,8 @@ And the parts for this remote control part (this project) are:
 
 * [Arduino Due](https://www.amazon.com/dp/B00A6C3JN2/)
 * [Logitech F310 Gamepad](https://www.amazon.com/dp/B003VAHYQY/)
-* [DSD TECH HM-19 BLE Module](https://www.amazon.com/dp/B07MBLVHH8/) [Datasheet](HM-18 HM-19_en-V1.pdf)
+* [DSD TECH HM-19 BLE Module](https://www.amazon.com/dp/B07MBLVHH8/)
+  * [Datasheet](HM-18%20HM-19_en-V1.pdf)
 * [USB OTG Adapter](https://www.amazon.com/dp/B00GM0OZ4O/)
 * Any random USB power bank + a USB A<->USB Micro cable
 
