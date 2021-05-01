@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MIT
+// Copyright 2021 Will Page <compenguy@gmail.com>
 // USBHost - Version: Latest
 
 #include "GamepadController.h"
