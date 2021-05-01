@@ -3,29 +3,29 @@
 
 #include "hidgamepad.h"
 
-class GamepadController : public GamepadReportParser
-{
-public:
-  GamepadController(USBHost &usb) : hostGamepad(&usb), lastRead(true) {
-    hostGamepad.SetReportParser(0, this);
-  };
-
-  bool getLastBuf(uint8_t packet[8]) {
-    if (!lastRead) {
-      for (int i = 0; i < 8; i++) packet[i] = lastBuf[i];
-      lastRead = true;
+class GamepadController : public GamepadReportParser {
+  public:
+    GamepadController(USBHost &usb) : hostGamepad(&usb), lastRead(true) {
+        hostGamepad.SetReportParser(0, this);
     };
-    return lastRead;
-  }
 
-protected:
-  virtual void OnUnknownReport (uint32_t bufsize, uint8_t *buf);
+    bool getLastBuf(uint8_t packet[8]) {
+        if (!lastRead) {
+            for (int i = 0; i < 8; i++)
+                packet[i] = lastBuf[i];
+            lastRead = true;
+        } else {
+        }
+        return lastRead;
+    }
 
+  protected:
+    virtual void OnUnknownReport(uint32_t bufsize, uint8_t *buf);
 
-private:
-  HIDGamepad hostGamepad;
-  uint8_t lastBuf[8];
-  bool lastRead;
+  private:
+    HIDGamepad hostGamepad;
+    uint8_t lastBuf[8];
+    bool lastRead;
 };
 
 #endif
