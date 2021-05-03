@@ -63,6 +63,15 @@ void setup() {
 void loop() {
     // Process USB tasks
     //usb.Task();
-    Serial.println(ble.issueCommand("BAUD?"));
+    String getCmd("GAIN");
+    String getResp();
+    String setVal("1");
+    Serial.print(getCmd);
+    Serial.print(": ");
+    Serial.println(ble.issueGet(getCmd));
+    Serial.print("Set ");
+    Serial.print(getCmd);
+    Serial.print(": ");
+    Serial.println(ble.issueSet(getCmd, setVal));
     delay(1000);
 }

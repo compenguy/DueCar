@@ -9,18 +9,54 @@ String Modem::issueCommand(String &args) {
         command.concat("+");
         command.concat(args);
     }
-    Serial.print("Sending: ");
-    Serial.println(command);
     stream.print(command);
     String response(stream.readString());
-    Serial.print("Received: ");
-    Serial.println(response);
+    if (args.length()) {
+        if (response.startsWith("OK+")) {
+            return response.substring(strlen("OK+"));
+        }
+    } else {
+        if (response.startsWith("OK")) {
+            return response.substring(strlen("OK"));
+        }
+    }
     return response;
 }
 
 String Modem::issueCommand(const char *args) {
     String strargs(args);
     return issueCommand(strargs);
+}
+
+String Modem::issueGet(String& cmd) {
+    String query(cmd);
+    query.concat("?");
+    String response(issueCommand(query));
+    if (response.startsWith("Get:")) {
+      return response.substring(strlen("Get:"));
+    }
+    return response;
+}
+
+String Modem::issueGet(const char *cmd) {
+    String strcmd(cmd);
+    return issueGet(strcmd);
+}
+
+String Modem::issueSet(String& cmd, String& args) {
+    String set(cmd);
+    set.concat(args);
+    String response(issueCommand(set));
+    if (response.startsWith("Set:")) {
+      return response.substring(strlen("Set:"));
+    }
+    return response;
+}
+
+String Modem::issueSet(const char *cmd, const char* args) {
+    String strcmd(cmd);
+    String strargs(args);
+    return issueSet(strcmd, strargs);
 }
 
 /*

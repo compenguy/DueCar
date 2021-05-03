@@ -124,6 +124,11 @@ class Modem {
       String issueCommand(String&);
       String issueCommand(const char *);
 
+      String issueGet(String&);
+      String issueGet(const char*);
+      String issueSet(String&, String&);
+      String issueSet(const char*, const char*);
+
       /*
       void disconnect(); // AT -> OK/OK+LOST
       void getAddress(); // AT+ADDR? -> OK+ADDR:MAC Address
