@@ -209,23 +209,22 @@ class Modem {
     bool manualStartupEnabled(bool &);
     bool enableManualStartup(bool);
 
+    bool beaconEnabled(bool &);
+    bool enableBeacon(bool);
+
+    bool getBeaconUuid(String &);
+    bool setBeaconUuid(const String &);
+
+    bool getBeaconMajorVersion(String &);
+    bool setBeaconMajorVersion(const String &);
+
+    bool getBeaconMinorVersion(String &);
+    bool setBeaconMinorVersion(const String &);
+
+    bool getBeaconMeasuredPower(String &);
+    bool setBeaconMeasuredPower(const String &);
+
     /*
-    bool beaconEnabled(); // AT+IBEA? -> OK+Get:[0-1]
-    void enableBeacon(bool); // AT+IBEA[0-1] -> OK+Set:[0-1]
-
-    String getBeaconUuid(); // AT+IBE0? -> OK+Get:[0-F]{4}, AT+IBE1, AT+IBE2,
-    AT+IBE3 void setBeaconUuid(String&); // AT+IBE0[0-F]{4} -> OK+Set:[0-F]{4},
-    AT+IBE1, AT+IBE2, AT+IBE3
-
-    uint16_t getBeaconMajorVersion(); // AT+MARJ? -> OK+Get:[0-F]{4}
-    void setBeaconMajorVersion(uint16_t); // AT+MARJ[0-F]{4} -> OK+Set:[0-F]{4}
-
-    uint16_t getBeaconMinorVersion(); // AT+MINO? -> OK+Get:[0-F]{4}
-    void setBeaconMinorVersion(uint16_t); // AT+MINO[0-F]{4} -> OK+Set:[0-F]{4}
-
-    uint8_t getBeaconMeasuredPower(); // AT+MEAS? -> OK+Get:[0-F]{2}
-    void setBeaconMeasuredPower(uint8_t); // AT+MEAS[0-F]{2} -> OK+Set:[0-F]{2}
-
     mode_t getUartMode(); // AT+MODE? -> OK+Get:[0-2]
     void setUartMode(mode_t); // AT+MODE[0-2] -> OK+Set:[0-2]
 

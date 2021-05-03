@@ -615,27 +615,98 @@ bool Modem::enableManualStartup(bool enable) {
     String resp;
     return issueSet(cmd, val, resp);
 }
+// AT+IBEA? -> OK+Get:[0-1]
+bool Modem::beaconEnabled(bool &enabled) {
+    String cmd("IBEA");
+    String resp;
+    if (!issueGet(cmd, resp)) {
+        return false;
+    }
+    enabled = (bool)(resp.toInt());
+    return true;
+}
+
+// AT+IBEA[0-1] -> OK+Set:[0-1]
+bool Modem::enableBeacon(bool enable) {
+    String cmd("IBEA");
+    String val((uint8_t)enable, HEX);
+    String resp;
+    return issueSet(cmd, val, resp);
+}
+
+// AT+IBE0? -> OK+Get:[0-F]{4}, AT+IBE1, AT+IBE2, AT+IBE3
+bool Modem::getBeaconUuid(String &uuid) {
+    String cmd("IBE0");
+    String resp;
+    if (!issueGet(cmd, resp)) {
+        return false;
+    }
+    uuid = resp;
+    return true;
+}
+
+// AT+IBE0[0-F]{4} -> OK+Set:[0-F]{4}, AT+IBE1, AT+IBE2, AT+IBE3
+bool Modem::setBeaconUuid(const String &uuid) {
+    String cmd("IBE0");
+    String resp;
+    return issueSet(cmd, uuid, resp);
+}
+
+// AT+MARJ? -> OK+Get:[0-F]{4}
+bool Modem::getBeaconMajorVersion(String &version) {
+    String cmd("MARJ");
+    String resp;
+    if (!issueGet(cmd, resp)) {
+        return false;
+    }
+    version = resp;
+    return true;
+}
+
+// AT+MARJ[0-F]{4} -> OK+Set:[0-F]{4}
+bool Modem::setBeaconMajorVersion(const String &version) {
+    String cmd("MARJ");
+    String resp;
+    return issueSet(cmd, version, resp);
+}
+
+// AT+MINO? -> OK+Get:[0-F]{4}
+bool Modem::getBeaconMinorVersion(String &version) {
+    String cmd("MINO");
+    String resp;
+    if (!issueGet(cmd, resp)) {
+        return false;
+    }
+    version = resp;
+    return true;
+}
+
+// AT+MINO[0-F]{4} -> OK+Set:[0-F]{4}
+bool Modem::setBeaconMinorVersion(const String &version) {
+    String cmd("MINO");
+    String resp;
+    return issueSet(cmd, version, resp);
+}
+
+// AT+MEAS? -> OK+Get:[0-F]{2}
+bool Modem::getBeaconMeasuredPower(String &power) {
+    String cmd("MEAS");
+    String resp;
+    if (!issueGet(cmd, resp)) {
+        return false;
+    }
+    power = resp;
+    return true;
+}
+
+// AT+MEAS[0-F]{2} -> OK+Set:[0-F]{2}
+bool Modem::setBeaconMeasuredPower(const String &power) {
+    String cmd("MEAS");
+    String resp;
+    return issueSet(cmd, power, resp);
+}
 
 /*
-bool Modem::beaconEnabled(); // AT+IBEA? -> OK+Get:[0-1]
-void Modem::enableBeacon(bool); // AT+IBEA[0-1] -> OK+Set:[0-1]
-
-string Modem::getBeaconUuid(); // AT+IBE0? -> OK+Get:[0-F]{4}, AT+IBE1,
-AT+IBE2, AT+IBE3 void Modem::setBeaconUuid(string); // AT+IBE0[0-F]{4} ->
-OK+Set:[0-F]{4}, AT+IBE1, AT+IBE2, AT+IBE3
-
-uint16_t Modem::getBeaconMajorVersion(); // AT+MARJ? -> OK+Get:[0-F]{4}
-void Modem::setBeaconMajorVersion(uint16_t); // AT+MARJ[0-F]{4} ->
-OK+Set:[0-F]{4}
-
-uint16_t Modem::getBeaconMinorVersion(); // AT+MINO? -> OK+Get:[0-F]{4}
-void Modem::setBeaconMinorVersion(uint16_t); // AT+MINO[0-F]{4} ->
-OK+Set:[0-F]{4}
-
-uint8_t Modem::getBeaconMeasuredPower(); // AT+MEAS? -> OK+Get:[0-F]{2}
-void Modem::setBeaconMeasuredPower(uint8_t); // AT+MEAS[0-F]{2} ->
-OK+Set:[0-F]{2}
-
 mode_t Modem::getUartMode(); // AT+MODE? -> OK+Get:[0-2]
 void Modem::setUartMode(mode_t); // AT+MODE[0-2] -> OK+Set:[0-2]
 
