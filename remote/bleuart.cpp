@@ -30,7 +30,7 @@ bool Modem::issueCommand(const String &args, String &response) {
     return readResponse(response);
 }
 
-// TOOD: It's possible that all queries return Get: as the response prefix
+// TODO: It's possible that all queries return Get: as the response prefix
 // (contrary to documentation), and if so, this method is redundant, and should
 // be folded into issueGet
 bool Modem::issueQuery(const String &cmd, const String &respprefix,
@@ -531,24 +531,92 @@ bool Modem::getBeacon(uint8_t id, beacon_t &beacon) {
     }
 }
 
-/*
-bool Modem::characteristic2Enabled(); // AT+FFE2? -> OK+Get:[0-1]
-void Modem::enableCharacteristic2(bool); // AT+FFE2[0-1] -> OK+Set:[0-1]
+// AT+FFE2? -> OK+Get:[0-1]
+bool Modem::characteristic2Enabled(bool &enabled) {
+    String cmd("FFE2");
+    String resp;
+    if (!issueGet(cmd, resp)) {
+        return false;
+    }
+    enabled = (bool)(resp.toInt());
+    return true;
+}
+
+// AT+FFE2[0-1] -> OK+Set:[0-1]
+bool Modem::enableCharacteristic2(bool enable) {
+    String cmd("FFE2");
+    String val((uint8_t)enable, HEX);
+    String resp;
+    return issueSet(cmd, val, resp);
+}
 
 // AT+FLOW? not supported yet as of V1 datasheet
 // AT+FLOW[0-1] not supported yet as of V1 datasheet
 
-bool Modem::highTxGainEnabled(); // AT+GAIT? -> OK+Get:[0-1]
-void Modem::enableHighTxGain(bool); // AT+GAIT[0-1] -> OK+Set:[0-1]
+// AT+GAIT? -> OK+Get:[0-1]
+bool Modem::highTxGainEnabled(bool &enabled) {
+    String cmd("GAIT");
+    String resp;
+    if (!issueGet(cmd, resp)) {
+        return false;
+    }
+    enabled = (bool)(resp.toInt());
+    return true;
+}
 
-bool Modem::highRxGainEnabled(); // AT+GAIN? -> OK+Get:[0-1]
-void Modem::enableHighRxGain(bool); // AT+GAIN[0-1] -> OK+Set:[0-1]
+// AT+GAIT[0-1] -> OK+Set:[0-1]
+bool Modem::enableHighTxGain(bool enable) {
+    String cmd("GAIT");
+    String val((uint8_t)enable, HEX);
+    String resp;
+    return issueSet(cmd, val, resp);
+}
 
-string Modem::help(); // AT+HELP? -> String
+// AT+GAIN? -> OK+Get:[0-1]
+bool Modem::highRxGainEnabled(bool &enabled) {
+    String cmd("GAIN");
+    String resp;
+    if (!issueGet(cmd, resp)) {
+        return false;
+    }
+    enabled = (bool)(resp.toInt());
+    return true;
+}
 
-bool Modem::manualStartupEnabled(); // AT+IMME? -> OK+Get:[0-1]
-void Modem::enableManualStartup(bool); // AT+IMME[0-1] -> OK+Set:[0-1]
+// AT+GAIN[0-1] -> OK+Set:[0-1]
+bool Modem::enableHighRxGain(bool enable) {
+    String cmd("GAIN");
+    String val((uint8_t)enable, HEX);
+    String resp;
+    return issueSet(cmd, val, resp);
+}
 
+// AT+HELP? -> String
+String Modem::help() {
+    stream.print("AT+HELP?");
+    return stream.readString();
+}
+
+// AT+IMME? -> OK+Get:[0-1]
+bool Modem::manualStartupEnabled(bool &enabled) {
+    String cmd("IMME");
+    String resp;
+    if (!issueGet(cmd, resp)) {
+        return false;
+    }
+    enabled = (bool)(resp.toInt());
+    return true;
+}
+
+// AT+IMME[0-1] -> OK+Set:[0-1]
+bool Modem::enableManualStartup(bool enable) {
+    String cmd("IMME");
+    String val((uint8_t)enable, HEX);
+    String resp;
+    return issueSet(cmd, val, resp);
+}
+
+/*
 bool Modem::beaconEnabled(); // AT+IBEA? -> OK+Get:[0-1]
 void Modem::enableBeacon(bool); // AT+IBEA[0-1] -> OK+Set:[0-1]
 

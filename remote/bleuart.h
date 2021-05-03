@@ -184,32 +184,32 @@ class Modem {
     bool connectAddress(const String &, response_t &);
     // TODO: connectRandom() AT+CO1??? -> OK+CO11[AEF]
 
-    bool discoverDevices(); // AT+DISC? -> OK+DIS[C0-2]([SE]|[0-F]{6})
+    bool discoverDevices();
     uint8_t devicesCount();
     bool getDevice(uint8_t, device_t &);
 
-    bool discoverBeacons(); // AT+DISI? -> OK+DISC????
+    bool discoverBeacons();
     uint8_t beaconsCount();
     bool getBeacon(uint8_t, beacon_t &);
 
-    /*
-    bool characteristic2Enabled(bool&); // AT+FFE2? -> OK+Get:[0-1]
-    bool enableCharacteristic2(bool); // AT+FFE2[0-1] -> OK+Set:[0-1]
+    bool characteristic2Enabled(bool &);
+    bool enableCharacteristic2(bool);
 
     // AT+FLOW? not supported yet as of V1 datasheet
     // AT+FLOW[0-1] not supported yet as of V1 datasheet
 
-    bool highTxGainEnabled(); // AT+GAIT? -> OK+Get:[0-1]
-    void enableHighTxGain(bool); // AT+GAIT[0-1] -> OK+Set:[0-1]
+    bool highTxGainEnabled(bool &);
+    bool enableHighTxGain(bool);
 
-    bool highRxGainEnabled(); // AT+GAIN? -> OK+Get:[0-1]
-    void enableHighRxGain(bool); // AT+GAIN[0-1] -> OK+Set:[0-1]
+    bool highRxGainEnabled(bool &);
+    bool enableHighRxGain(bool);
 
-    String help(); // AT+HELP? -> String
+    String help();
 
-    bool manualStartupEnabled(); // AT+IMME? -> OK+Get:[0-1]
-    void enableManualStartup(bool); // AT+IMME[0-1] -> OK+Set:[0-1]
+    bool manualStartupEnabled(bool &);
+    bool enableManualStartup(bool);
 
+    /*
     bool beaconEnabled(); // AT+IBEA? -> OK+Get:[0-1]
     void enableBeacon(bool); // AT+IBEA[0-1] -> OK+Set:[0-1]
 

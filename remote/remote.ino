@@ -56,6 +56,8 @@ void setup() {
     Serial.begin(9600);
     Serial1.begin(9600);
     Serial.println("Program started");
+    Serial.print("BLE Help: ");
+    Serial.println(ble.help());
     // Give the USB port time to quiesce
     delay(200);
 }
