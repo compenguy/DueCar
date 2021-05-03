@@ -401,8 +401,9 @@ bool Modem::discoverDevices() {
     String cmd("DISC");
     String respprefix("DIS");
     String resp;
+
     deviceCount = 0;
-    Serial.println("DISC Query");
+
     if (!issueQuery(cmd, respprefix, resp)) {
         return false;
     }
@@ -412,7 +413,6 @@ bool Modem::discoverDevices() {
             return false;
         }
         if (resp.equals("DISCE")) {
-            Serial.println("End Discovery");
             break;
         } else if (resp.startsWith("DIS")) {
             // We have to be careful about how we increment i, because
@@ -430,27 +430,21 @@ bool Modem::discoverDevices() {
                 ++i;
             }
             if (i >= BLE_MAX_DISCOVERED_DEVICES) {
-                Serial.println("Device discovery list full.");
                 break;
             }
             devices[i].id = i;
             devices[i].mac = resp.substring(strlen("DIS") + 2);
-            Serial.print("Discovered MAC: ");
-            Serial.println(devices[i].mac);
             devices[i].name = "";
             deviceCount = i;
             first = false;
         } else if (resp.startsWith("NAME:")) {
             devices[i].name = resp.substring(strlen("NAME:"));
-            Serial.print("Discovered name: ");
-            Serial.println(devices[i].name);
         }
     }
     // If our table filled up, there are more responses
     // Drain them off.
     if (!resp.equals("DISCE")) {
         do {
-            Serial.println("Draining unread responses from discovery.");
         } while (readResponse(resp) && !resp.equals("") &&
                  !resp.equals("DISCE"));
     }
@@ -467,11 +461,77 @@ bool Modem::getDevice(uint8_t id, device_t &device) {
         return true;
     }
 }
-/*
-void Modem::discoverBeacons(); // AT+DISI? -> OK+DISC????
-uint8_t Modem::beaconsCount();
-beacon_t Modem::getBeacon(uint8_t);
 
+// AT+DISI? -> OK+DISC????
+bool Modem::discoverBeacons() {
+    String cmd("DISI");
+    String respprefix("DIS");
+    String resp;
+
+    beaconCount = 0;
+
+    if (!issueQuery(cmd, respprefix, resp)) {
+        return false;
+    }
+    for (int i = 0; i < BLE_MAX_DISCOVERED_DEVICES; ++i) {
+        if (!readResponse(resp)) {
+            return false;
+        }
+        if (resp.equals("DISCE")) {
+            break;
+        } else if (resp.startsWith("DIS")) {
+            long start = strlen("DIS");
+            long end = resp.indexOf(':', start);
+            beacons[i].id = i;
+            beacons[i].factory_id = resp.substring(start, end);
+            start = end + 1;
+            end = resp.indexOf(':', start);
+            beacons[i].uuid = resp.substring(start, end);
+            start = end + 1;
+            end = resp.indexOf(':', start);
+            beacons[i].majorVersion = resp.substring(start, end);
+            start = end + 1;
+            end = resp.indexOf(':', start);
+            beacons[i].minorVersion = resp.substring(start, end);
+            start = end + 1;
+            end = resp.indexOf(':', start);
+            beacons[i].minorVersion = resp.substring(start, end);
+            start = end + 1;
+            end = resp.indexOf(':', start);
+            beacons[i].power = resp.substring(start, end);
+            start = end + 1;
+            end = resp.indexOf(':', start);
+            beacons[i].mac = resp.substring(start, end);
+            start = end + 1;
+            end = resp.indexOf(':', start);
+            beacons[i].rssi = resp.substring(start, end);
+
+            beaconCount = i + 1;
+        }
+    }
+    // If our table filled up, there are more responses
+    // Drain them off.
+    if (!resp.equals("DISCE")) {
+        do {
+            Serial.println("Draining unread responses from discovery.");
+        } while (readResponse(resp) && !resp.equals("") &&
+                 !resp.equals("DISCE"));
+    }
+    return beaconCount > 0;
+}
+
+uint8_t Modem::beaconsCount() { return beaconCount; }
+
+bool Modem::getBeacon(uint8_t id, beacon_t &beacon) {
+    if (id >= beaconCount) {
+        return false;
+    } else {
+        beacon = beacons[id];
+        return true;
+    }
+}
+
+/*
 bool Modem::characteristic2Enabled(); // AT+FFE2? -> OK+Get:[0-1]
 void Modem::enableCharacteristic2(bool); // AT+FFE2[0-1] -> OK+Set:[0-1]
 

@@ -75,13 +75,13 @@ class Modem {
 
     struct beacon_t {
         uint8_t id;
-        uint8_t factory_id[8];
-        uint8_t uuid[32];
-        uint32_t majorVersion;
-        uint32_t minorVersion;
-        uint16_t power;
-        uint8_t mac[12];
-        uint32_t rssi;
+        String factory_id;
+        String uuid;
+        String majorVersion;
+        String minorVersion;
+        String power;
+        String mac;
+        String rssi;
     };
 
     enum class output_state_t {
@@ -188,13 +188,13 @@ class Modem {
     uint8_t devicesCount();
     bool getDevice(uint8_t, device_t &);
 
-    /*
-    void discoverBeacons(); // AT+DISI? -> OK+DISC????
+    bool discoverBeacons(); // AT+DISI? -> OK+DISC????
     uint8_t beaconsCount();
-    beacon_t getBeacon(uint8_t);
+    bool getBeacon(uint8_t, beacon_t &);
 
-    bool characteristic2Enabled(); // AT+FFE2? -> OK+Get:[0-1]
-    void enableCharacteristic2(bool); // AT+FFE2[0-1] -> OK+Set:[0-1]
+    /*
+    bool characteristic2Enabled(bool&); // AT+FFE2? -> OK+Get:[0-1]
+    bool enableCharacteristic2(bool); // AT+FFE2[0-1] -> OK+Set:[0-1]
 
     // AT+FLOW? not supported yet as of V1 datasheet
     // AT+FLOW[0-1] not supported yet as of V1 datasheet
