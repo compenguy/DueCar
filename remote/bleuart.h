@@ -10,201 +10,185 @@
 
 #define BLE_MAX_DISCOVERED_DEVICES 12
 
-namespace Ble {
-enum class adv_interval_t {
-    c100ms = 0,
-    c152_5ms,
-    c211_25ms,
-    c318_75ms,
-    c417_5ms,
-    c546_25ms,
-    c760ms,
-    c852_5ms,
-    c1022_5ms,
-    c1285ms,
-    c2000ms,
-    c3000ms,
-    c4000ms,
-};
-
-enum advertising_t {
-    cAdvertisingScanResponseConnectable = 0,
-    cOnlyAllowLastDevice,
-    cAdvertisingScanResponse,
-    cAdvertising
-};
-
-enum power_t {
-    cN18dbm = 0,
-    cN12dbm,
-    cN6dbm,
-    cN3dbm,
-    cN2dbm,
-    cN1dbm,
-    c0dbm,
-    cP3dbm
-};
-
-enum class ll_connect_interval_t {
-    c7_5ms = 0,
-    c10ms,
-    c15ms,
-    c20ms,
-    c25ms,
-    c30ms,
-    c35ms,
-    c40ms,
-    c45ms,
-    c4000ms
-};
-
-enum role_t { cPeripheral = 0, cCentral };
-
-enum talk_t {
-    cWriteWithoutResponse = 0,
-    cWriteWithResponse,
-    cWriteResponseOptional
-};
-
-struct device_t {
-    uint8_t id;
-    uint8_t mac[6];
-    String name;
-};
-
-struct beacon_t {
-    uint8_t id;
-    uint8_t factory_id[8];
-    uint8_t uuid[32];
-    uint32_t majorVersion;
-    uint32_t minorVersion;
-    uint16_t power;
-    uint8_t mac[12];
-    uint32_t rssi;
-};
-
-namespace ModulePin {
-enum output_state_t {
-    cPio2LowPio3Low = 0,
-    cPio2LowPio3High,
-    cPio2HighPio3Low,
-    cPio2HighPio3High
-};
-
-enum system_key_t { cCancel = 0, cFactoryReset };
-}; // namespace ModulePin
-
-namespace Connection {
-enum response_t {
-    cReconnecting,
-    cConnecting,
-    cError,
-    cFail,
-    cNoAddress,
-    cOther
-};
-};
-
-namespace Uart {
-enum mode_t {
-    cSendAndReceive = 0,
-    cSendOnlyRemoteConfigures,
-    cSendOnlyRemoteQueries,
-};
-
-enum rate_t {
-    c1200 = 0,
-    c2400,
-    c4800,
-    c9600,
-    c19200,
-    c38400,
-    c57600,
-    c115200,
-    c230400
-};
-
-enum parity_t { cNone = 0, cEven, cOdd };
-
-enum stop_t { cOneBit = 0, cTwoBits };
-}; // namespace Uart
-
 class Modem {
-  private:
-    Stream &stream;
-    device_t devices[BLE_MAX_DISCOVERED_DEVICES];
-    beacon_t beacons[BLE_MAX_DISCOVERED_DEVICES];
-
   public:
-    Modem(Stream &stream) : stream(stream){};
+    enum class adv_interval_t {
+        c100ms = 0,
+        c152_5ms,
+        c211_25ms,
+        c318_75ms,
+        c417_5ms,
+        c546_25ms,
+        c760ms,
+        c852_5ms,
+        c1022_5ms,
+        c1285ms,
+        c2000ms,
+        c3000ms,
+        c4000ms,
+    };
 
-    String issueCommand(String &);
-    String issueCommand(const char *);
+    enum class advertising_t {
+        cAdvertisingScanResponseConnectable = 0,
+        cOnlyAllowLastDevice,
+        cAdvertisingScanResponse,
+        cAdvertising
+    };
 
-    String issueQuery(String &, String &);
-    String issueQuery(const char *, const char *);
-    String issueGet(String &);
-    String issueGet(const char *);
-    String issueSet(String &, String &);
-    String issueSet(const char *, const char *);
-    bool issueSetChecked(String &, String &);
+    enum class power_t {
+        cN18dbm = 0,
+        cN12dbm,
+        cN6dbm,
+        cN3dbm,
+        cN2dbm,
+        cN1dbm,
+        c0dbm,
+        cP3dbm
+    };
 
-    String disconnect();
-    String getAddress();
+    enum class ll_connect_interval_t {
+        c7_5ms = 0,
+        c10ms,
+        c15ms,
+        c20ms,
+        c25ms,
+        c30ms,
+        c35ms,
+        c40ms,
+        c45ms,
+        c4000ms
+    };
 
-    adv_interval_t getAdvertisingInterval();
+    enum class role_t { cPeripheral = 0, cCentral };
+
+    enum class talk_t {
+        cWriteWithoutResponse = 0,
+        cWriteWithResponse,
+        cWriteResponseOptional
+    };
+
+    struct device_t {
+        uint8_t id;
+        String mac;
+        String name;
+    };
+
+    struct beacon_t {
+        uint8_t id;
+        uint8_t factory_id[8];
+        uint8_t uuid[32];
+        uint32_t majorVersion;
+        uint32_t minorVersion;
+        uint16_t power;
+        uint8_t mac[12];
+        uint32_t rssi;
+    };
+
+    enum class output_state_t {
+        cPio2LowPio3Low = 0,
+        cPio2LowPio3High,
+        cPio2HighPio3Low,
+        cPio2HighPio3High
+    };
+
+    enum class system_key_t { cCancel = 0, cFactoryReset };
+
+    enum class response_t {
+        cReconnecting,
+        cConnecting,
+        cError,
+        cFail,
+        cNoAddress,
+        cOther
+    };
+
+    enum class mode_t {
+        cSendAndReceive = 0,
+        cSendOnlyRemoteConfigures,
+        cSendOnlyRemoteQueries,
+    };
+
+    enum class rate_t {
+        c1200 = 0,
+        c2400,
+        c4800,
+        c9600,
+        c19200,
+        c38400,
+        c57600,
+        c115200,
+        c230400
+    };
+
+    enum class parity_t { cNone = 0, cEven, cOdd };
+
+    enum class stop_t { cOneBit = 0, cTwoBits };
+
+    Modem(Stream &stream) : stream(stream), deviceCount(0), beaconCount(0){};
+
+    bool readResponse(String &);
+    bool issueCommand(const String &, String &);
+
+    bool issueQuery(const String &, const String &, String &);
+    bool issueGet(const String &, String &);
+    bool issueSet(const String &, const String &, String &);
+
+    bool disconnect();
+    bool getAddress(String &);
+
+    bool getAdvertisingInterval(adv_interval_t &);
     bool setAdvertisingInterval(adv_interval_t);
 
-    advertising_t getAdvertisingType();
+    bool getAdvertisingType(advertising_t &);
     bool setAdvertisingType(advertising_t);
 
-    ModulePin::output_state_t getConnectedModulePinOutputState();
-    bool setConnectedModulePinOutputState(ModulePin::output_state_t);
+    bool getConnectedModulePinOutputState(output_state_t &);
+    bool setConnectedModulePinOutputState(output_state_t);
 
-    ModulePin::output_state_t getInitialModulePinOutputState();
-    bool setInitialModulePinOutputState(ModulePin::output_state_t);
+    bool getInitialModulePinOutputState(output_state_t &);
+    bool setInitialModulePinOutputState(output_state_t);
 
-    Uart::rate_t getBaudRate();
-    bool setBaudRate(Uart::rate_t);
+    bool getBaudRate(rate_t &);
+    bool setBaudRate(rate_t);
 
-    String getCharacteristic();
-    bool setCharacteristic(String &);
+    bool getCharacteristic(String &);
+    bool setCharacteristic(const String &);
 
-    ll_connect_interval_t getMinimumLinkLayerConnectionInterval();
+    bool getMinimumLinkLayerConnectionInterval(ll_connect_interval_t &);
     bool setMinimumLinkLayerConnectionInterval(ll_connect_interval_t);
 
-    ll_connect_interval_t getMaximumLinkLayerConnectionInterval();
+    bool getMaximumLinkLayerConnectionInterval(ll_connect_interval_t &);
     bool setMaximumLinkLayerConnectionInterval(ll_connect_interval_t);
 
     // AT+COLA? -> OK+Get:[0-4]
     // meanings of values not explained in datasheet
-    uint8_t getLinkLayerConnectionSlaveLatency(); // AT+COLA? -> OK+Get:[0-4]
+    bool
+    getLinkLayerConnectionSlaveLatency(uint8_t &); // AT+COLA? -> OK+Get:[0-4]
     // AT+COLA? -> OK+Set:[0-4]
     // meanings of values not explained in datasheet
     bool setLinkLayerConnectionSlaveLatency(uint8_t);
 
     // AT+COSU? -> OK+Get:[0-6]
     // Effect of command unclear, description is duplicate of another command
-    uint8_t getUnknownInterval();
+    bool getUnknownInterval(uint8_t &);
     // AT+COSU[0-6] -> OK+Set:[0-6]
     // Effect of command unclear, description is duplicate of another command
     bool setUnknownInterval(uint8_t);
 
-    bool getUpdateConnection();     // AT+COUP? -> OK+Get:[0-1]
-    bool setUpdateConnection(bool); // AT+COUP[0-1] -> OK+Set:[0-1]
+    bool getUpdateConnection(bool &);
+    bool setUpdateConnection(bool);
 
-    bool clearLastConnectedDeviceAddress();    // AT+CLEAR -> OK+CLEAR
-    Connection::response_t reconnect();        // AT+CONNL -> OK+CONN[LEFN]
-    Connection::response_t connectId(uint8_t); // AT+CONN[0-5] -> OK+CONN[AEF]
-    Connection::response_t
-    connectAddress(String &); // AT+CON[0-F]{6} -> OK+CONN[AEF]
+    bool clearLastConnectedDeviceAddress();
+    bool reconnect(response_t &);
+    bool connectId(uint8_t, response_t &);
+    bool connectAddress(const String &, response_t &);
     // TODO: connectRandom() AT+CO1??? -> OK+CO11[AEF]
 
-    /*
-    void discoverDevices(); // AT+DISC? -> OK+DIS[C0-2]([SE]|[0-F]{6})
+    bool discoverDevices(); // AT+DISC? -> OK+DIS[C0-2]([SE]|[0-F]{6})
     uint8_t devicesCount();
-    device_t getDevice(uint8_t);
+    bool getDevice(uint8_t, device_t &);
 
+    /*
     void discoverBeacons(); // AT+DISI? -> OK+DISC????
     uint8_t beaconsCount();
     beacon_t getBeacon(uint8_t);
@@ -242,8 +226,8 @@ class Modem {
     uint8_t getBeaconMeasuredPower(); // AT+MEAS? -> OK+Get:[0-F]{2}
     void setBeaconMeasuredPower(uint8_t); // AT+MEAS[0-F]{2} -> OK+Set:[0-F]{2}
 
-    Uart::mode_t getUartMode(); // AT+MODE? -> OK+Get:[0-2]
-    void setUartMode(Uart::mode_t); // AT+MODE[0-2] -> OK+Set:[0-2]
+    mode_t getUartMode(); // AT+MODE? -> OK+Get:[0-2]
+    void setUartMode(mode_t); // AT+MODE[0-2] -> OK+Set:[0-2]
 
     bool notificationsEnabled(); // AT+NOTI? -> OK+Get:[0-1]
     void enableNotifications(bool); // AT+NOTI[0-1] -> OK+Set:[0-1]
@@ -253,8 +237,8 @@ class Modem {
     String getModuleName(); // AT+NAME? -> OK+NAME\w{1,13}
     void setModuleName(String&); // AT+NAME\w{1,13} -> OK+Set\w{1,13}
 
-    Uart::parity_t getParity(); // AT+PARI? -> OK+Get:[0-2]
-    void setParity(Uart::parity_t); // AT+PARI[0-2] -> OK+Set:[0-2]
+    parity_t getParity(); // AT+PARI? -> OK+Get:[0-2]
+    void setParity(parity_t); // AT+PARI[0-2] -> OK+Set:[0-2]
 
     bool getPio(uint8_t); // AT+PIO[1-B]? -> OK+PIO[1-B]:[0-1]
     void setPio(uint8_t, bool); // AT+PIO[1-B][0-1] -> OK+PIO[1-B]:[0-1]
@@ -279,12 +263,12 @@ class Modem {
     Ble::talk_t getTalkMethod(); // AT+RESP? -> OK+Get:[0-2]
     void setTalkMethod(Ble::talk_t); // AT+RESP[0-2] -> OK+Set:[0-2]
 
-    ModulePin::system_key_t getSystemKeySetting(); // AT+SYSK? -> OK+Get:[0-1]
-    void setSystemKeySetting(ModulePin::system_key_t); // AT+SYSK[0-1] ->
+    system_key_t getSystemKeySetting(); // AT+SYSK? -> OK+Get:[0-1]
+    void setSystemKeySetting(system_key_t); // AT+SYSK[0-1] ->
     OK+Set:[0-1]
 
-    Uart::stop_t getStopBit(); // AT+STOP? -> OK+Get:[0-1]
-    void setStopBit(Uart::stop_t); // AT+STOP[0-1] -> OK+Set:[0-1]
+    stop_t getStopBit(); // AT+STOP? -> OK+Get:[0-1]
+    void setStopBit(stop_t); // AT+STOP[0-1] -> OK+Set:[0-1]
 
     void sleep(); // AT+SLEEP -> OK+SLEEP
 
@@ -304,8 +288,13 @@ class Modem {
 
     String getFirmwareVersion(); // AT+VERR/AT+VERS -> String
     */
-};
 
-}; // namespace Ble
+  private:
+    Stream &stream;
+    device_t devices[BLE_MAX_DISCOVERED_DEVICES];
+    uint8_t deviceCount;
+    beacon_t beacons[BLE_MAX_DISCOVERED_DEVICES];
+    uint8_t beaconCount;
+};
 
 #endif /* BLEUART_H_INCLUDED */

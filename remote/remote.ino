@@ -7,7 +7,7 @@
 #include <cstdio>
 
 // Initialize BLE Uart
-Ble::Modem ble(Serial1);
+Modem ble(Serial1);
 
 // Initialize USB Controller
 USBHost usb;
@@ -63,7 +63,32 @@ void setup() {
 void loop() {
     // Process USB tasks
     // usb.Task();
-    Serial.print("Address: ");
-    Serial.println(ble.getAddress());
+    String address;
+    if (ble.getAddress(address)) {
+        Serial.println(address);
+    } else {
+        Serial.println("Failed querying BLE device address.");
+    }
+    Serial.println("Discovering devices...");
+    if (ble.discoverDevices()) {
+        Serial.println("Success!");
+        uint8_t count = ble.devicesCount();
+        for (uint8_t i = 0; i < count; i++) {
+            Modem::device_t device;
+            if (ble.getDevice(i, device)) {
+                Serial.print(device.id);
+                Serial.print(": ");
+                Serial.print(device.name);
+                Serial.print("[");
+                Serial.print(device.mac);
+                Serial.println("]");
+            } else {
+                Serial.println("Invalid device id");
+            }
+        }
+    } else {
+        Serial.println("Failed.");
+    }
+
     delay(1000);
 }
