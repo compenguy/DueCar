@@ -28,12 +28,12 @@ String Modem::issueCommand(const char *args) {
     return issueCommand(strargs);
 }
 
-String Modem::issueGet(String& cmd) {
+String Modem::issueGet(String &cmd) {
     String query(cmd);
     query.concat("?");
     String response(issueCommand(query));
     if (response.startsWith("Get:")) {
-      return response.substring(strlen("Get:"));
+        return response.substring(strlen("Get:"));
     }
     return response;
 }
@@ -43,17 +43,17 @@ String Modem::issueGet(const char *cmd) {
     return issueGet(strcmd);
 }
 
-String Modem::issueSet(String& cmd, String& args) {
+String Modem::issueSet(String &cmd, String &args) {
     String set(cmd);
     set.concat(args);
     String response(issueCommand(set));
     if (response.startsWith("Set:")) {
-      return response.substring(strlen("Set:"));
+        return response.substring(strlen("Set:"));
     }
     return response;
 }
 
-String Modem::issueSet(const char *cmd, const char* args) {
+String Modem::issueSet(const char *cmd, const char *args) {
     String strcmd(cmd);
     String strargs(args);
     return issueSet(strcmd, strargs);
@@ -67,28 +67,37 @@ uint8_t BLEUart::getAdvertisingInterval(); // AT+ADVI? -> OK+Get:[0-F]
 void BLEUart::setAdvertisingInterval(uint8_t); // AT+ADVI[0-F] -> OK+Set:[0-F]
 
 Ble::advertising_t BLEUart::getAdvertisingType(); // AT+ADTY? -> OK+Get:[0-3]
-void BLEUart::setAdvertisingType(Ble::advertising_t); // AT+ADTY[0-3] -> OK+Set:[0-3]
+void BLEUart::setAdvertisingType(Ble::advertising_t); // AT+ADTY[0-3] ->
+OK+Set:[0-3]
 
-ModulePin::output_state_t BLEUart::getConnectedModulePinOutputState(); // AT+AFTC? -> OK+Get:[0-3]
-void BLEUart::setConnectedModulePinOutputState(ModulePin::output_state_t); // AT+AFTC[0-3] -> OK+Set:[0-3]
+ModulePin::output_state_t BLEUart::getConnectedModulePinOutputState(); //
+AT+AFTC? -> OK+Get:[0-3] void
+BLEUart::setConnectedModulePinOutputState(ModulePin::output_state_t); //
+AT+AFTC[0-3] -> OK+Set:[0-3]
 
-ModulePin::output_state_t BLEUart::getInitialModulePinOutputState(); // AT+BEFC? -> OK+Get:[0-3]
-void BLEUart::setInitialModulePinOutputState(ModulePin::output_state_t); // AT+BEFC[0-3] -> OK+Set:[0-3]
+ModulePin::output_state_t BLEUart::getInitialModulePinOutputState(); // AT+BEFC?
+-> OK+Get:[0-3] void
+BLEUart::setInitialModulePinOutputState(ModulePin::output_state_t); //
+AT+BEFC[0-3] -> OK+Set:[0-3]
 
 Uart::rate_t BLEUart::getBaudRate(); // AT+BAUD? -> OK+Get:[0-8]
 void BLEUart::setBaudRate(Uart::rate_t); // AT+BAUD[0-8] -> OK+Set:[0-8]
 
 uint16_t BLEUart::getCharacteristic(); // AT+CHAR? -> OK+Get:'0x'[0-F]{4}
-void BLEUart::setCharacteristic(uint16_t); // AT+CHAR'0x'[0-F]{4} -> OK+Set:'0x'[0-F]{4}
+void BLEUart::setCharacteristic(uint16_t); // AT+CHAR'0x'[0-F]{4} ->
+OK+Set:'0x'[0-F]{4}
 
-uint8_t BLEUart::getMinimumLinkLayerConnectionInterval(); // AT+COMI? -> OK+Get:[0-9]
-void BLEUart::setMinimumLinkLayerConnectionInterval(uint8_t); // AT+COMI[0-9] -> OK+Set:[0-9]
+uint8_t BLEUart::getMinimumLinkLayerConnectionInterval(); // AT+COMI? ->
+OK+Get:[0-9] void BLEUart::setMinimumLinkLayerConnectionInterval(uint8_t); //
+AT+COMI[0-9] -> OK+Set:[0-9]
 
-uint8_t BLEUart::getMaximumLinkLayerConnectionInterval(); // AT+COMA? -> OK+Get:[0-9]
-void BLEUart::setMaximumLinkLayerConnectionInterval(uint8_t); // AT+COMA[0-9] -> OK+Set:[0-9]
+uint8_t BLEUart::getMaximumLinkLayerConnectionInterval(); // AT+COMA? ->
+OK+Get:[0-9] void BLEUart::setMaximumLinkLayerConnectionInterval(uint8_t); //
+AT+COMA[0-9] -> OK+Set:[0-9]
 
-uint8_t BLEUart::getLinkLayerConnectionSlaveLatency(); // AT+COLA? -> OK+Get:[0-4]
-void BLEUart::setLinkLayerConnectionSlaveLatency(uint8_t); // AT+COLA[0-4] -> OK+Set:[0-4]
+uint8_t BLEUart::getLinkLayerConnectionSlaveLatency(); // AT+COLA? ->
+OK+Get:[0-4] void BLEUart::setLinkLayerConnectionSlaveLatency(uint8_t); //
+AT+COLA[0-4] -> OK+Set:[0-4]
 
 uint8_t BLEUart::getUnknownInterval(); // AT+COSU? -> OK+Get:[0-6]
 void BLEUart::setUnknownInterval(uint8_t); // AT+COSU[0-6] -> OK+Set:[0-6]
@@ -98,8 +107,9 @@ void BLEUart::setUpdateConnection(bool); // AT+COUP[0-1] -> OK+Set:[0-1]
 
 void BLEUart::clearLastConnectedDeviceAddress(); // AT+CLEAR -> OK+CLEAR
 Connection::response_t BLEUart::reconnect(); // AT+CONNL -> OK+CONN[LEFN]
-Connection::response_t BLEUart::connectId(uint8_t); // AT+CONN[0-5] -> OK+CONN[AEF]
-Connection::response_t BLEUart::connectAddress(uint8_t[6]); // AT+CO[N1][0-2][0-9]{6} -> OK+CO[N1][N1][AEF]
+Connection::response_t BLEUart::connectId(uint8_t); // AT+CONN[0-5] ->
+OK+CONN[AEF] Connection::response_t BLEUart::connectAddress(uint8_t[6]); //
+AT+CO[N1][0-2][0-9]{6} -> OK+CO[N1][N1][AEF]
 
 void BLEUart::discoverDevices(); // AT+DISC? -> OK+DIS[C0-2]([SE]|[0-F]{6})
 uint8_t BLEUart::devicesCount();
@@ -129,17 +139,21 @@ void BLEUart::enableManualStartup(bool); // AT+IMME[0-1] -> OK+Set:[0-1]
 bool BLEUart::beaconEnabled(); // AT+IBEA? -> OK+Get:[0-1]
 void BLEUart::enableBeacon(bool); // AT+IBEA[0-1] -> OK+Set:[0-1]
 
-string BLEUart::getBeaconUuid(); // AT+IBE0? -> OK+Get:[0-F]{4}, AT+IBE1, AT+IBE2, AT+IBE3
-void BLEUart::setBeaconUuid(string); // AT+IBE0[0-F]{4} -> OK+Set:[0-F]{4}, AT+IBE1, AT+IBE2, AT+IBE3
+string BLEUart::getBeaconUuid(); // AT+IBE0? -> OK+Get:[0-F]{4}, AT+IBE1,
+AT+IBE2, AT+IBE3 void BLEUart::setBeaconUuid(string); // AT+IBE0[0-F]{4} ->
+OK+Set:[0-F]{4}, AT+IBE1, AT+IBE2, AT+IBE3
 
 uint16_t BLEUart::getBeaconMajorVersion(); // AT+MARJ? -> OK+Get:[0-F]{4}
-void BLEUart::setBeaconMajorVersion(uint16_t); // AT+MARJ[0-F]{4} -> OK+Set:[0-F]{4}
+void BLEUart::setBeaconMajorVersion(uint16_t); // AT+MARJ[0-F]{4} ->
+OK+Set:[0-F]{4}
 
 uint16_t BLEUart::getBeaconMinorVersion(); // AT+MINO? -> OK+Get:[0-F]{4}
-void BLEUart::setBeaconMinorVersion(uint16_t); // AT+MINO[0-F]{4} -> OK+Set:[0-F]{4}
+void BLEUart::setBeaconMinorVersion(uint16_t); // AT+MINO[0-F]{4} ->
+OK+Set:[0-F]{4}
 
 uint8_t BLEUart::getBeaconMeasuredPower(); // AT+MEAS? -> OK+Get:[0-F]{2}
-void BLEUart::setBeaconMeasuredPower(uint8_t); // AT+MEAS[0-F]{2} -> OK+Set:[0-F]{2}
+void BLEUart::setBeaconMeasuredPower(uint8_t); // AT+MEAS[0-F]{2} ->
+OK+Set:[0-F]{2}
 
 Uart::mode_t BLEUart::getUartMode(); // AT+MODE? -> OK+Get:[0-2]
 void BLEUart::setUartMode(Uart::mode_t); // AT+MODE[0-2] -> OK+Set:[0-2]
@@ -147,7 +161,8 @@ void BLEUart::setUartMode(Uart::mode_t); // AT+MODE[0-2] -> OK+Set:[0-2]
 bool BLEUart::notificationsEnabled(); // AT+NOTI? -> OK+Get:[0-1]
 void BLEUart::enableNotifications(bool); // AT+NOTI[0-1] -> OK+Set:[0-1]
 bool BLEUart::getNotifyAddressOnDisconnect(); // AT+NOTP? -> OK+Get:[0-1]
-void BLEUart::setNotifyAddressOnDisconnect(bool); // AT+NOTP[0-1] -> OK+Set:[0-1]
+void BLEUart::setNotifyAddressOnDisconnect(bool); // AT+NOTP[0-1] ->
+OK+Set:[0-1]
 
 string BLEUart::getModuleName(); // AT+NAME? -> OK+NAME\w{1,13}
 void BLEUart::setModuleName(string); // AT+NAME\w{1,13} -> OK+Set\w{1,13}
@@ -178,8 +193,9 @@ string BLEUart::getLastConnected(); // AT+RADD? -> OK+RADD:[0-F]{6}
 Ble::talk_t BLEUart::getTalkMethod(); // AT+RESP? -> OK+Get:[0-2]
 void BLEUart::setTalkMethod(Ble::talk_t); // AT+RESP[0-2] -> OK+Set:[0-2]
 
-ModulePin::system_key_t BLEUart::getSystemKeySetting(); // AT+SYSK? -> OK+Get:[0-1]
-void BLEUart::setSystemKeySetting(ModulePin::system_key_t); // AT+SYSK[0-1] -> OK+Set:[0-1]
+ModulePin::system_key_t BLEUart::getSystemKeySetting(); // AT+SYSK? ->
+OK+Get:[0-1] void BLEUart::setSystemKeySetting(ModulePin::system_key_t); //
+AT+SYSK[0-1] -> OK+Set:[0-1]
 
 Uart::stop_t BLEUart::getStopBit(); // AT+STOP? -> OK+Get:[0-1]
 void BLEUart::setStopBit(Uart::stop_t); // AT+STOP[0-1] -> OK+Set:[0-1]
@@ -198,7 +214,8 @@ bool BLEUart::nameDiscoveryEnabled(); // AT+SHOW? -> OK+Get:[0-1]
 void BLEUart::enableNameDiscovery(bool); // AT+SHOW[0-1] -> OK+Set:[0-1]
 
 uint16_t BLEUart::getServiceUuid(); // AT+UUID? -> OK+Get:'0x'[0-F]{4}
-void BLEUart::setServiceUuid(uint16_t); // AT+UUID'0x'[0-F]{4} -> OK+Set:'0x'[0-F]{4}
+void BLEUart::setServiceUuid(uint16_t); // AT+UUID'0x'[0-F]{4} ->
+OK+Set:'0x'[0-F]{4}
 
 string BLEUart::getFirmwareVersion(); // AT+VERR/AT+VERS -> String
 */
