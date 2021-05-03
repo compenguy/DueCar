@@ -3,7 +3,11 @@
 // USBHost - Version: Latest
 
 #include "GamepadController.h"
+#include "bleuart.h"
 #include <cstdio>
+
+// Initialize BLE Uart
+Ble::Modem ble(Serial1);
 
 // Initialize USB Controller
 USBHost usb;
@@ -50,11 +54,15 @@ void digitalAxisChange(uint8_t id, uint8_t value) {
 
 void setup() {
     Serial.begin(9600);
+    Serial1.begin(9600);
     Serial.println("Program started");
+    // Give the USB port time to quiesce
     delay(200);
 }
 
 void loop() {
     // Process USB tasks
-    usb.Task();
+    //usb.Task();
+    Serial.println(ble.issueCommand("BAUD?"));
+    delay(1000);
 }
