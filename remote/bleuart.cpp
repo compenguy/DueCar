@@ -1,116 +1,53 @@
 
 #include "bleuart.h"
 
-bool Modem::readResponse(String &response) {
-    String tmp(stream.readString());
-    if (tmp.startsWith("OK+")) {
-        Serial.print("Successful: ");
-        Serial.println(tmp);
-        response = tmp.substring(strlen("OK+"));
-        return true;
-    } else if (response.startsWith("OK")) {
-        Serial.print("Successful: ");
-        Serial.println(tmp);
-        response = tmp.substring(strlen("OK"));
-        return true;
+bool Modem::makeCentral() {
+    bool dirty = false;
+    // AT+IMME1
+    bool cur_manualstart;
+    if (manualStartupEnabled(cur_manualstart) && !cur_manualstart) {
+        if (!enableManualStartup(true)) {
+            // TODO: in case of failure, rebuild the prior state?
+            return false;
+        }
+        dirty = true;
     }
-    Serial.print("Unsuccessful: ");
-    Serial.println(tmp);
-    response = tmp;
-    return false;
-}
-
-bool Modem::issueCommand(const String &args, String &response) {
-    String command("AT");
-    if (args.length()) {
-        command.concat("+");
-        command.concat(args);
+    // AT+ROLE1
+    role_t cur_role;
+    if (getRole(cur_role) && cur_role != role_t::cCentral) {
+        if (!setRole(role_t::cCentral)) {
+            return false;
+        }
+        dirty = true;
     }
-    stream.print(command);
-    return readResponse(response);
-}
-
-// TODO: It's possible that all queries return Get: as the response prefix
-// (contrary to documentation), and if so, this method is redundant, and should
-// be folded into issueGet
-bool Modem::issueQuery(const String &cmd, const String &respprefix,
-                       String &response) {
-    String query(cmd + "?");
-    String respprefix2(respprefix + ":");
-    Serial.print("Issuing query ");
-    Serial.println(query);
-    if (!issueCommand(query, response)) {
-        return false;
+    if (dirty) {
+        reset();
     }
-    if (response.startsWith(respprefix2)) {
-        Serial.println("Got expected response.");
-        response = response.substring(respprefix2.length());
-        return true;
+}
+
+bool Modem::makePeripheral(bool autostart) {
+    bool dirty = false;
+    // AT+IMME[0-1]
+    bool cur_manualstart;
+    bool want_manualstart = !autostart;
+    if (manualStartupEnabled(cur_manualstart) && cur_manualstart != want_manualstart) {
+        if (!enableManualStartup(want_manualstart)) {
+            // TODO: in case of failure, rebuild the prior state?
+            return false;
+        }
+        dirty = true;
     }
-    Serial.print("Unexpected response ");
-    Serial.println(response);
-    return false;
-}
-
-bool Modem::issueGet(const String &cmd, String &response) {
-    String prefix("Get");
-    return issueQuery(cmd, prefix, response);
-}
-
-bool Modem::issueSet(const String &cmd, const String &args, String &response) {
-    String set(cmd + args);
-    if (!issueCommand(set, response)) {
-        return false;
+    // AT+ROLE0
+    role_t cur_role;
+    if (getRole(cur_role) && cur_role != role_t::cPeripheral) {
+        if (!setRole(role_t::cPeripheral)) {
+            return false;
+        }
+        dirty = true;
     }
-    if (response.startsWith("Set:")) {
-        response = response.substring(strlen("Set:"));
-        return args.equals(response);
+    if (dirty) {
+        reset();
     }
-    return false;
-}
-
-bool Modem::getBool(String &cmd, bool &val) {
-    String resp;
-    if (!issueGet(cmd, resp)) {
-        return false;
-    }
-    val = (bool)(resp.toInt());
-    return true;
-}
-
-bool Modem::setBool(const String &cmd, bool val) {
-    String intval((uint8_t)val, HEX);
-    String resp;
-    return issueSet(cmd, intval, resp);
-}
-
-bool Modem::getChar(String &cmd, uint8_t &val) {
-    String resp;
-    if (!issueGet(cmd, resp)) {
-        return false;
-    }
-    val = (uint8_t)(resp.toInt());
-    return true;
-}
-
-bool Modem::setChar(const String &cmd, uint8_t val) {
-    String intval((uint8_t)val, HEX);
-    String resp;
-    return issueSet(cmd, intval, resp);
-}
-
-bool Modem::getString(const String &cmd, String &val) {
-    String resp;
-    if (!issueGet(cmd, resp)) {
-        return false;
-    }
-    val = resp;
-    return true;
-}
-
-bool Modem::setString(const String &cmd, const String &val) {
-    String resp;
-    return issueSet(cmd, val, resp);
 }
 
 // AT -> OK/OK+LOST
@@ -239,16 +176,20 @@ bool Modem::setLinkLayerConnectionSlaveLatency(uint8_t latency) {
 }
 
 // AT+COSU? -> OK+Get:[0-6]
+/* Effect of command unclear, description is duplicate of another command
 bool Modem::getUnknownInterval(uint8_t &interval) {
     String cmd("COSU");
     return getChar(cmd, interval);
 }
+*/
 
 // AT+COSU[0-6] -> OK+Set:[0-6]
+/* Effect of command unclear, description is duplicate of another command
 bool Modem::setUnknownInterval(uint8_t interval) {
     String cmd("COSU");
     return setChar(cmd, interval);
 }
+*/
 
 // AT+COUP? -> OK+Get:[0-1]
 bool Modem::getUpdateConnection(bool &update) {
@@ -353,24 +294,62 @@ bool Modem::connectAddress(const String &addr, response_t &response) {
     }
     return true;
 }
+// TODO: connectRandom() AT+CO1??? -> OK+CO11[AEF]
 
 // AT+DISC? -> OK+DIS[C0-2]([SE]|[0-F]{6})
 bool Modem::discoverDevices() {
     // TODO: DIS0/DIS1/DIS2 not well documented - what causes them,
     // what do they mean?
-    String cmd("DISC");
-    String respprefix("DIS");
-    String resp;
-
     deviceCount = 0;
 
-    if (!issueQuery(cmd, respprefix, resp)) {
+    stream.print("AT+DISC?");
+    String resp;
+
+    /*
+    // TODO: test discovery when in peripheral mode, verify output result
+    // and that we correctly error out; use a timeout?  timeout based on discovery time.
+    while (!resp.endsWith("OK+DISCE")) {
+        if (stream.available()) {
+            Serial.print("Discovery found: ");
+            char one = stream.read();
+            Serial.println(one, HEX);
+            resp += one;
+            Serial.print("Built up response: ");
+            Serial.println(resp);
+        }
+    }
+
+    Serial.println("Discovery complete.");
+    Serial.println("Discovery dump: ");
+    Serial.println(resp);
+
+    return parseDeviceDiscoveryResults(resp);
+}
+
+    if (!resp.startsWith("OK+DISCS")) {
         return false;
     }
+    resp = resp.substring(strlen("OK+DISCS"));
+    */
+
+    if (!readResponse(resp) || !resp.equals("DISCS")) {
+        // Drain the stream of any lingering output
+        String extra = stream.readString();
+        Serial.print("Unexpected response to discovery: ");
+        Serial.println(resp);
+        Serial.print("Draining the communication buffer: ");
+        Serial.println(extra);
+        return false;
+    }
+
+    // We got the "DISCS" response... we can't get off this train until we
+    // receive DISCE (TODO: or perhaps if we've exceeded the scan timeout)
+
     bool first = true;
     for (int i = 0; i < BLE_MAX_DISCOVERED_DEVICES;) {
-        if (!readResponse(resp)) {
-            return false;
+        // Busy-wait until we've definitely gotten enough data for a response
+        while(!readResponse(resp)) {
+            Serial.println("Waiting for more devices to be discovered...");
         }
         if (resp.equals("DISCE")) {
             break;
@@ -408,7 +387,9 @@ bool Modem::discoverDevices() {
         } while (readResponse(resp) && !resp.equals("") &&
                  !resp.equals("DISCE"));
     }
-    return deviceCount > 0;
+    Serial.print("Devices discovered: ");
+    Serial.println(deviceCount);
+    return true;
 }
 
 uint8_t Modem::devicesCount() { return deviceCount; }
@@ -559,15 +540,42 @@ bool Modem::enableBeacon(bool enable) {
     return setBool(cmd, enable);
 }
 
-// AT+IBE0? -> OK+Get:[0-F]{4}, AT+IBE1, AT+IBE2, AT+IBE3
 bool Modem::getBeaconUuid(String &uuid) {
-    String cmd("IBE0");
+    String builder;
+    String tmp;
+    for (int i = 0; i < 4; i++) {
+        if (!getBeaconUuidPart(i, tmp)) {
+            return false;
+        }
+        builder.concat(tmp);
+    }
+    uuid = builder;
+    return true;
+}
+
+// AT+IBE0? -> OK+Get:[0-F]{4}, AT+IBE1, AT+IBE2, AT+IBE3
+bool Modem::getBeaconUuidPart(uint8_t quad, String &uuid) {
+    String cmd("IBE");
+    String part(quad, HEX);
+    cmd.concat(part);
     return getString(cmd, uuid);
 }
 
-// AT+IBE0[0-F]{4} -> OK+Set:[0-F]{4}, AT+IBE1, AT+IBE2, AT+IBE3
 bool Modem::setBeaconUuid(const String &uuid) {
-    String cmd("IBE0");
+    for (int i = 0; i < 4; i++) {
+        String part = uuid.substring(i * 8, (i + 1) * 8);
+        if (!setBeaconUuidPart(i, part)) {
+            return false;
+        }
+    }
+    return true;
+}
+
+// AT+IBE0[0-F]{4} -> OK+Set:[0-F]{4}, AT+IBE1, AT+IBE2, AT+IBE3
+bool Modem::setBeaconUuidPart(uint8_t quad, const String &uuid) {
+    String cmd("IBE");
+    String part(quad, HEX);
+    cmd.concat(part);
     return setString(cmd, uuid);
 }
 
@@ -853,4 +861,108 @@ bool Modem::setServiceUuid(const String &uuid) {
 bool Modem::getFirmwareVersion(String &fwver) {
     String cmd("VERR");
     return getString(cmd, fwver);
+}
+
+// Helper methods
+bool Modem::readResponse(String &response) {
+    String tmp(stream.readString());
+    if (tmp.startsWith("OK+")) {
+        response = tmp.substring(strlen("OK+"));
+        return true;
+    } else if (response.startsWith("OK")) {
+        response = tmp.substring(strlen("OK"));
+        return true;
+    }
+    response = tmp;
+    return false;
+}
+
+bool Modem::issueCommand(const String &args, String &response) {
+    String command("AT");
+    if (args.length()) {
+        command.concat("+");
+        command.concat(args);
+    }
+    stream.print(command);
+    return readResponse(response);
+}
+
+bool Modem::issueQuery(const String &cmd, const String &respprefix,
+                       String &response) {
+    String query(cmd + "?");
+    String respprefix2(respprefix + ":");
+    Serial.print("Issuing query ");
+    Serial.println(query);
+    if (!issueCommand(query, response)) {
+        return false;
+    }
+    if (response.startsWith(respprefix2)) {
+        Serial.println("Got expected response.");
+        response = response.substring(respprefix2.length());
+        return true;
+    }
+    Serial.print("Unexpected response ");
+    Serial.println(response);
+    return false;
+}
+
+bool Modem::issueGet(const String &cmd, String &response) {
+    String prefix("Get");
+    return issueQuery(cmd, prefix, response);
+}
+
+bool Modem::issueSet(const String &cmd, const String &args, String &response) {
+    String set(cmd + args);
+    if (!issueCommand(set, response)) {
+        return false;
+    }
+    if (response.startsWith("Set:")) {
+        response = response.substring(strlen("Set:"));
+        return args.equals(response);
+    }
+    return false;
+}
+
+bool Modem::getBool(String &cmd, bool &val) {
+    String resp;
+    if (!issueGet(cmd, resp)) {
+        return false;
+    }
+    val = (bool)(resp.toInt());
+    return true;
+}
+
+bool Modem::setBool(const String &cmd, bool val) {
+    String intval((uint8_t)val, HEX);
+    String resp;
+    return issueSet(cmd, intval, resp);
+}
+
+bool Modem::getChar(String &cmd, uint8_t &val) {
+    String resp;
+    if (!issueGet(cmd, resp)) {
+        return false;
+    }
+    val = (uint8_t)(resp.toInt());
+    return true;
+}
+
+bool Modem::setChar(const String &cmd, uint8_t val) {
+    String intval((uint8_t)val, HEX);
+    String resp;
+    return issueSet(cmd, intval, resp);
+}
+
+bool Modem::getString(const String &cmd, String &val) {
+    String resp;
+    if (!issueGet(cmd, resp)) {
+        return false;
+    }
+    val = resp;
+    return true;
+}
+
+bool Modem::setString(const String &cmd, const String &val) {
+    String resp;
+    return issueSet(cmd, val, resp);
 }

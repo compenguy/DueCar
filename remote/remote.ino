@@ -70,6 +70,13 @@ void setup() {
     } else {
         Serial.println("Failed querying BLE device address.");
     }
+    Serial.println("Switching to BLE central mode...");
+    if (!ble.makeCentral()) {
+        Serial.println("Error switching BLE to central mode.");
+    }
+    if (!ble.enableNameDiscovery(true)) {
+        Serial.println("Error enabling remote device name discovery.");
+    }
     // Give the USB port time to quiesce
     delay(200);
 }
@@ -96,7 +103,7 @@ void loop() {
             }
         }
     } else {
-        Serial.println("Failed.");
+        Serial.println("Discovery failed.");
     }
 
     delay(1000);

@@ -126,20 +126,11 @@ class Modem {
 
     Modem(Stream &stream) : stream(stream), deviceCount(0), beaconCount(0){};
 
-    bool readResponse(String &);
-    bool issueCommand(const String &, String &);
+    // Convenience methods for switching between BLE peripheral and Central
+    bool makeCentral();
+    bool makePeripheral(bool autostart);
 
-    bool issueQuery(const String &, const String &, String &);
-    bool issueGet(const String &, String &);
-    bool issueSet(const String &, const String &, String &);
-
-    bool getBool(String &, bool &);
-    bool setBool(const String &, bool);
-    bool getChar(String &, uint8_t &);
-    bool setChar(const String &, uint8_t);
-    bool getString(const String &, String &);
-    bool setString(const String &, const String &);
-
+    // Documented modem commands
     bool disconnect();
     bool getAddress(String &);
 
@@ -167,20 +158,11 @@ class Modem {
     bool getMaximumLinkLayerConnectionInterval(ll_connect_interval_t &);
     bool setMaximumLinkLayerConnectionInterval(ll_connect_interval_t);
 
-    // AT+COLA? -> OK+Get:[0-4]
-    // meanings of values not explained in datasheet
-    bool
-    getLinkLayerConnectionSlaveLatency(uint8_t &); // AT+COLA? -> OK+Get:[0-4]
-    // AT+COLA? -> OK+Set:[0-4]
-    // meanings of values not explained in datasheet
+    bool getLinkLayerConnectionSlaveLatency(uint8_t &);
     bool setLinkLayerConnectionSlaveLatency(uint8_t);
 
-    // AT+COSU? -> OK+Get:[0-6]
-    // Effect of command unclear, description is duplicate of another command
-    bool getUnknownInterval(uint8_t &);
-    // AT+COSU[0-6] -> OK+Set:[0-6]
-    // Effect of command unclear, description is duplicate of another command
-    bool setUnknownInterval(uint8_t);
+    // bool getUnknownInterval(uint8_t &);
+    // bool setUnknownInterval(uint8_t);
 
     bool getUpdateConnection(bool &);
     bool setUpdateConnection(bool);
@@ -189,7 +171,7 @@ class Modem {
     bool reconnect(response_t &);
     bool connectId(uint8_t, response_t &);
     bool connectAddress(const String &, response_t &);
-    // TODO: connectRandom() AT+CO1??? -> OK+CO11[AEF]
+    // bool connectRandom(response_t&);
 
     bool discoverDevices();
     uint8_t devicesCount();
@@ -220,7 +202,9 @@ class Modem {
     bool enableBeacon(bool);
 
     bool getBeaconUuid(String &);
+    bool getBeaconUuidPart(uint8_t quad, String &);
     bool setBeaconUuid(const String &);
+    bool setBeaconUuidPart(uint8_t quad, const String &);
 
     bool getBeaconMajorVersion(String &);
     bool setBeaconMajorVersion(const String &);
@@ -245,55 +229,71 @@ class Modem {
     bool getParity(parity_t &);
     bool setParity(parity_t);
 
-    bool getPio(uint8_t, bool &); // AT+PIO[1-B]? -> OK+PIO[1-B]:[0-1]
-    bool setPio(uint8_t, bool);   // AT+PIO[1-B][0-1] -> OK+PIO[1-B]:[0-1]
+    bool getPio(uint8_t, bool &);
+    bool setPio(uint8_t, bool);
 
-    bool autoSleepEnabled(bool &); // AT+PWRM? -> OK+Get:[0-1]
-    bool enableAutoSleep(bool);    // AT+PWRM[0-1] -> OK+Set:[0-1]
+    bool autoSleepEnabled(bool &);
+    bool enableAutoSleep(bool);
 
-    bool getModulePower(power_t &); // AT+POWE? -> OK+Get:[0-7]
-    bool setModulePower(power_t);   // AT+POWE[0-7] -> OK+Set:[0-7]
+    bool getModulePower(power_t &);
+    bool setModulePower(power_t);
 
-    bool reliableAdvertisingEnabled(bool &); // AT+RELI? -> OK+Get:[0-1]
-    bool enableReliableAdvertising(bool);    // AT+RELI[0-1] -> OK+Set:[0-1]
+    bool reliableAdvertisingEnabled(bool &);
+    bool enableReliableAdvertising(bool);
 
-    bool resetConfiguration(); // AT+RENEW -> OK+RENEW
-    bool reset();              // AT+RESET -> OK+RESET
+    bool resetConfiguration();
+    bool reset();
 
-    bool getRole(role_t &); // AT+ROLE? -> OK+Get:[0-1]
-    bool setRole(role_t);   // AT+ROLE[0-1] -> OK+Set:[0-1]
+    bool getRole(role_t &);
+    bool setRole(role_t);
 
-    bool getLastConnected(String &); // AT+RADD? -> OK+RADD:[0-F]{6}
+    bool getLastConnected(String &);
 
-    bool getTalkMethod(talk_t &); // AT+RESP? -> OK+Get:[0-2]
-    bool setTalkMethod(talk_t);   // AT+RESP[0-2] -> OK+Set:[0-2]
+    bool getTalkMethod(talk_t &);
+    bool setTalkMethod(talk_t);
 
-    bool getSystemKeySetting(system_key_t &); // AT+SYSK? -> OK+Get:[0-1]
-    bool setSystemKeySetting(system_key_t);   // AT+SYSK[0-1] -> OK+Set:[0-1]
+    bool getSystemKeySetting(system_key_t &);
+    bool setSystemKeySetting(system_key_t);
 
-    bool getStopBit(stop_t &); // AT+STOP? -> OK+Get:[0-1]
-    bool setStopBit(stop_t);   // AT+STOP[0-1] -> OK+Set:[0-1]
+    bool getStopBit(stop_t &);
+    bool setStopBit(stop_t);
 
-    bool sleep(); // AT+SLEEP -> OK+SLEEP
+    bool sleep();
 
-    bool start(); // AT+START -> OK+START
+    bool start();
 
-    bool getScanDuration(uint8_t &); // AT+SCAN? -> OK+Get[1-5]
-    bool setScanDuration(uint8_t);   // AT+SCAN[1-5] -> OK+Set[1-5]
+    bool getScanDuration(uint8_t &);
+    bool setScanDuration(uint8_t);
 
-    bool saveLastDeviceEnabled(bool &); // AT+SAVE? -> OK+Get:[0-1]
-    bool enableSaveLastDevice(bool);    // AT+SAVE[0-1] -> OK+Set:[0-1]
+    bool saveLastDeviceEnabled(bool &);
+    bool enableSaveLastDevice(bool);
 
-    bool nameDiscoveryEnabled(bool &); // AT+SHOW? -> OK+Get:[0-1]
-    bool enableNameDiscovery(bool);    // AT+SHOW[0-1] -> OK+Set:[0-1]
+    bool nameDiscoveryEnabled(bool &);
+    bool enableNameDiscovery(bool);
 
-    bool getServiceUuid(String &); // AT+UUID? -> OK+Get:'0x'[0-F]{4}
-    bool setServiceUuid(
-        const String &); // AT+UUID'0x'[0-F]{4} -> OK+Set:'0x'[0-F]{4}
+    bool getServiceUuid(String &);
+    bool setServiceUuid(const String &);
 
-    bool getFirmwareVersion(String &); // AT+VERR/AT+VERS -> OK+Get:String
+    bool getFirmwareVersion(String &);
+
+    // Helper functions
+    bool readResponse(String &);
+    bool issueCommand(const String &, String &);
+
+    bool issueQuery(const String &, const String &, String &);
+    bool issueGet(const String &, String &);
+    bool issueSet(const String &, const String &, String &);
+
+    bool getBool(String &, bool &);
+    bool setBool(const String &, bool);
+    bool getChar(String &, uint8_t &);
+    bool setChar(const String &, uint8_t);
+    bool getString(const String &, String &);
+    bool setString(const String &, const String &);
 
   private:
+    bool parseDeviceDiscoveryResults(const String &);
+
     Stream &stream;
     device_t devices[BLE_MAX_DISCOVERED_DEVICES];
     uint8_t deviceCount;
