@@ -35,10 +35,8 @@ bool Modem::issueCommand(const String &args, String &response) {
 // be folded into issueGet
 bool Modem::issueQuery(const String &cmd, const String &respprefix,
                        String &response) {
-    String query(cmd);
-    query.concat("?");
-    String respprefix2(respprefix);
-    respprefix2.concat(":");
+    String query(cmd + "?");
+    String respprefix2(respprefix + ":");
     Serial.print("Issuing query ");
     Serial.println(query);
     if (!issueCommand(query, response)) {
@@ -60,8 +58,7 @@ bool Modem::issueGet(const String &cmd, String &response) {
 }
 
 bool Modem::issueSet(const String &cmd, const String &args, String &response) {
-    String set(cmd);
-    set.concat(args);
+    String set(cmd + args);
     if (!issueCommand(set, response)) {
         return false;
     }
@@ -70,6 +67,50 @@ bool Modem::issueSet(const String &cmd, const String &args, String &response) {
         return args.equals(response);
     }
     return false;
+}
+
+bool Modem::getBool(String &cmd, bool &val) {
+    String resp;
+    if (!issueGet(cmd, resp)) {
+        return false;
+    }
+    val = (bool)(resp.toInt());
+    return true;
+}
+
+bool Modem::setBool(const String &cmd, bool val) {
+    String intval((uint8_t)val, HEX);
+    String resp;
+    return issueSet(cmd, intval, resp);
+}
+
+bool Modem::getChar(String &cmd, uint8_t &val) {
+    String resp;
+    if (!issueGet(cmd, resp)) {
+        return false;
+    }
+    val = (uint8_t)(resp.toInt());
+    return true;
+}
+
+bool Modem::setChar(const String &cmd, uint8_t val) {
+    String intval((uint8_t)val, HEX);
+    String resp;
+    return issueSet(cmd, intval, resp);
+}
+
+bool Modem::getString(const String &cmd, String &val) {
+    String resp;
+    if (!issueGet(cmd, resp)) {
+        return false;
+    }
+    val = resp;
+    return true;
+}
+
+bool Modem::setString(const String &cmd, const String &val) {
+    String resp;
+    return issueSet(cmd, val, resp);
 }
 
 // AT -> OK/OK+LOST
@@ -82,224 +123,143 @@ bool Modem::disconnect() {
 // AT+ADDR? -> OK+ADDR:MAC Address
 bool Modem::getAddress(String &addr) {
     String cmd("ADDR");
-    String resp;
-    if (!issueGet(cmd, resp)) {
-        return false;
-    }
-    addr = resp;
-    return true;
+    return getString(cmd, addr);
 }
 
 // AT+ADVI? -> OK+Get:[0-F]
 bool Modem::getAdvertisingInterval(adv_interval_t &interval) {
     String cmd("ADVI");
-    String resp;
-    if (!issueGet(cmd, resp)) {
-        return false;
-    }
-    interval = (adv_interval_t)(resp.toInt());
-    return true;
+    return getChar(cmd, (uint8_t &)interval);
 }
 
 // AT+ADVI[0-F] -> OK+Set:[0-F]
 bool Modem::setAdvertisingInterval(adv_interval_t interval) {
     String cmd("ADVI");
-    String val((uint8_t)interval, HEX);
-    String response;
-    return issueSet(cmd, val, response);
+    return setChar(cmd, (uint8_t)interval);
 }
 
 // AT+ADTY? -> OK+Get:[0-3]
 bool Modem::getAdvertisingType(advertising_t &type) {
     String cmd("ADTY");
-    String resp;
-    if (!issueGet(cmd, resp)) {
-        return false;
-    }
-    type = (advertising_t)(resp.toInt());
-    return true;
+    return getChar(cmd, (uint8_t &)type);
 }
 
 // AT+ADTY[0-3] -> OK+Set:[0-3]
 bool Modem::setAdvertisingType(advertising_t type) {
     String cmd("ADTY");
-    String val((uint8_t)type, HEX);
-    String resp;
-    return issueSet(cmd, val, resp);
+    return setChar(cmd, (uint8_t)type);
 }
 
 // AT+AFTC? -> OK+Get:[0-3] void
 bool Modem::getConnectedModulePinOutputState(output_state_t &state) {
     String cmd("AFTC");
-    String resp;
-    if (!issueGet(cmd, resp)) {
-        return false;
-    }
-    state = (output_state_t)(resp.toInt());
-    return true;
+    return getChar(cmd, (uint8_t &)state);
 }
 
 // AT+AFTC[0-3] -> OK+Set:[0-3]
 bool Modem::setConnectedModulePinOutputState(output_state_t state) {
     String cmd("AFTC");
-    String val((uint8_t)state, HEX);
-    String resp;
-    return issueSet(cmd, val, resp);
+    return setChar(cmd, (uint8_t)state);
 }
 
 // AT+BEFC?  -> OK+Get:[0-3]
 bool Modem::getInitialModulePinOutputState(output_state_t &state) {
     String cmd("BEFC");
-    String resp;
-    if (!issueGet(cmd, resp)) {
-        return false;
-    }
-    state = (output_state_t)(resp.toInt());
-    return true;
+    return getChar(cmd, (uint8_t &)state);
 }
 
 // AT+BEFC[0-3] -> OK+Set:[0-3]
 bool Modem::setInitialModulePinOutputState(output_state_t state) {
     String cmd("BEFC");
-    String val((uint8_t)state, HEX);
-    String resp;
-    return issueSet(cmd, val, resp);
+    return setChar(cmd, (uint8_t)state);
 }
 
 // AT+BAUD? -> OK+Get:[0-8]
 bool Modem::getBaudRate(rate_t &rate) {
     String cmd("BAUD");
-    String resp;
-    if (!issueGet(cmd, resp)) {
-        return false;
-    }
-    rate = (rate_t)(resp.toInt());
-    return true;
+    return getChar(cmd, (uint8_t &)rate);
 }
 
 // AT+BAUD[0-8] -> OK+Set:[0-8]
 bool Modem::setBaudRate(rate_t rate) {
     String cmd("BAUD");
-    String val((uint8_t)rate, HEX);
-    String resp;
-    return issueSet(cmd, val, resp);
+    return setChar(cmd, (uint8_t)rate);
 }
 
 // AT+CHAR? -> OK+Get:'0x'[0-F]{4}
 bool Modem::getCharacteristic(String &charc) {
     String cmd("CHAR");
-    String resp;
-    if (!issueGet(cmd, resp)) {
-        return false;
-    }
-    charc = resp;
-    return true;
+    return getString(cmd, charc);
 }
 
 // AT+CHAR'0x'[0-F]{4} -> OK+Set:'0x'[0-F]{4}
 bool Modem::setCharacteristic(const String &charc) {
     String cmd("CHAR");
-    String resp;
-    return issueSet(cmd, charc, resp);
+    return setString(cmd, charc);
 }
 
 // AT+COMI? -> OK+Get:[0-9]
 bool Modem::getMinimumLinkLayerConnectionInterval(
     ll_connect_interval_t &interval) {
     String cmd("COMI");
-    String resp;
-    if (!issueGet(cmd, resp)) {
-        return false;
-    }
-    interval = (ll_connect_interval_t)(resp.toInt());
-    return true;
+    return getChar(cmd, (uint8_t &)interval);
 }
 
 // AT+COMI[0-9] -> OK+Set:[0-9]
 bool Modem::setMinimumLinkLayerConnectionInterval(
     ll_connect_interval_t interval) {
     String cmd("COMI");
-    String val((uint8_t)interval, HEX);
-    String resp;
-    return issueSet(cmd, val, resp);
+    return setChar(cmd, (uint8_t)interval);
 }
 
 // AT+COMA? -> OK+Get:[0-9]
 bool Modem::getMaximumLinkLayerConnectionInterval(
     ll_connect_interval_t &interval) {
     String cmd("COMA");
-    String resp;
-    if (!issueGet(cmd, resp)) {
-        return false;
-    }
-    interval = (ll_connect_interval_t)(resp.toInt());
-    return true;
+    return getChar(cmd, (uint8_t &)interval);
 }
 
 // AT+COMA[0-9] -> OK+Set:[0-9]
 bool Modem::setMaximumLinkLayerConnectionInterval(
     ll_connect_interval_t interval) {
     String cmd("COMA");
-    String val((uint8_t)interval, HEX);
-    String resp;
-    return issueSet(cmd, val, resp);
+    return setChar(cmd, (uint8_t)interval);
 }
 
 // AT+COLA? -> OK+Get:[0-4]
 bool Modem::getLinkLayerConnectionSlaveLatency(uint8_t &latency) {
     String cmd("COLA");
-    String resp;
-    if (!issueGet(cmd, resp)) {
-        return false;
-    }
-    latency = (uint8_t)(resp.toInt());
-    return true;
+    return getChar(cmd, latency);
 }
 
 // AT+COLA[0-4] -> OK+Set:[0-4]
-bool Modem::setLinkLayerConnectionSlaveLatency(uint8_t lat) {
+bool Modem::setLinkLayerConnectionSlaveLatency(uint8_t latency) {
     String cmd("COLA");
-    String val((uint8_t)lat, HEX);
-    String resp;
-    return issueSet(cmd, val, resp);
+    return setChar(cmd, latency);
 }
 
 // AT+COSU? -> OK+Get:[0-6]
 bool Modem::getUnknownInterval(uint8_t &interval) {
     String cmd("COSU");
-    String resp;
-    if (!issueGet(cmd, resp)) {
-        return false;
-    }
-    interval = (uint8_t)(resp.toInt());
-    return true;
+    return getChar(cmd, interval);
 }
 
 // AT+COSU[0-6] -> OK+Set:[0-6]
 bool Modem::setUnknownInterval(uint8_t interval) {
     String cmd("COSU");
-    String val((uint8_t)interval, HEX);
-    String resp;
-    return issueSet(cmd, val, resp);
+    return setChar(cmd, interval);
 }
 
 // AT+COUP? -> OK+Get:[0-1]
 bool Modem::getUpdateConnection(bool &update) {
     String cmd("COUP");
-    String resp;
-    if (!issueGet(cmd, resp)) {
-        return false;
-    }
-    update = (bool)(resp.toInt());
-    return true;
+    return getBool(cmd, update);
 }
 
 // AT+COUP[0-1] -> OK+Set:[0-1]
 bool Modem::setUpdateConnection(bool update) {
     String cmd("COUP");
-    String val((uint8_t)update, HEX);
-    String resp;
-    return issueSet(cmd, val, resp);
+    return setBool(cmd, update);
 }
 
 // AT+CLEAR -> OK+CLEAR
@@ -534,20 +494,13 @@ bool Modem::getBeacon(uint8_t id, beacon_t &beacon) {
 // AT+FFE2? -> OK+Get:[0-1]
 bool Modem::characteristic2Enabled(bool &enabled) {
     String cmd("FFE2");
-    String resp;
-    if (!issueGet(cmd, resp)) {
-        return false;
-    }
-    enabled = (bool)(resp.toInt());
-    return true;
+    return getBool(cmd, enabled);
 }
 
 // AT+FFE2[0-1] -> OK+Set:[0-1]
 bool Modem::enableCharacteristic2(bool enable) {
     String cmd("FFE2");
-    String val((uint8_t)enable, HEX);
-    String resp;
-    return issueSet(cmd, val, resp);
+    return setBool(cmd, enable);
 }
 
 // AT+FLOW? not supported yet as of V1 datasheet
@@ -556,39 +509,25 @@ bool Modem::enableCharacteristic2(bool enable) {
 // AT+GAIT? -> OK+Get:[0-1]
 bool Modem::highTxGainEnabled(bool &enabled) {
     String cmd("GAIT");
-    String resp;
-    if (!issueGet(cmd, resp)) {
-        return false;
-    }
-    enabled = (bool)(resp.toInt());
-    return true;
+    return getBool(cmd, enabled);
 }
 
 // AT+GAIT[0-1] -> OK+Set:[0-1]
 bool Modem::enableHighTxGain(bool enable) {
     String cmd("GAIT");
-    String val((uint8_t)enable, HEX);
-    String resp;
-    return issueSet(cmd, val, resp);
+    return setBool(cmd, enable);
 }
 
 // AT+GAIN? -> OK+Get:[0-1]
 bool Modem::highRxGainEnabled(bool &enabled) {
     String cmd("GAIN");
-    String resp;
-    if (!issueGet(cmd, resp)) {
-        return false;
-    }
-    enabled = (bool)(resp.toInt());
-    return true;
+    return getBool(cmd, enabled);
 }
 
 // AT+GAIN[0-1] -> OK+Set:[0-1]
 bool Modem::enableHighRxGain(bool enable) {
     String cmd("GAIN");
-    String val((uint8_t)enable, HEX);
-    String resp;
-    return issueSet(cmd, val, resp);
+    return setBool(cmd, enable);
 }
 
 // AT+HELP? -> String
@@ -600,174 +539,318 @@ String Modem::help() {
 // AT+IMME? -> OK+Get:[0-1]
 bool Modem::manualStartupEnabled(bool &enabled) {
     String cmd("IMME");
-    String resp;
-    if (!issueGet(cmd, resp)) {
-        return false;
-    }
-    enabled = (bool)(resp.toInt());
-    return true;
+    return getBool(cmd, enabled);
 }
 
 // AT+IMME[0-1] -> OK+Set:[0-1]
 bool Modem::enableManualStartup(bool enable) {
     String cmd("IMME");
-    String val((uint8_t)enable, HEX);
-    String resp;
-    return issueSet(cmd, val, resp);
+    return setBool(cmd, enable);
 }
 // AT+IBEA? -> OK+Get:[0-1]
 bool Modem::beaconEnabled(bool &enabled) {
     String cmd("IBEA");
-    String resp;
-    if (!issueGet(cmd, resp)) {
-        return false;
-    }
-    enabled = (bool)(resp.toInt());
-    return true;
+    return getBool(cmd, enabled);
 }
 
 // AT+IBEA[0-1] -> OK+Set:[0-1]
 bool Modem::enableBeacon(bool enable) {
     String cmd("IBEA");
-    String val((uint8_t)enable, HEX);
-    String resp;
-    return issueSet(cmd, val, resp);
+    return setBool(cmd, enable);
 }
 
 // AT+IBE0? -> OK+Get:[0-F]{4}, AT+IBE1, AT+IBE2, AT+IBE3
 bool Modem::getBeaconUuid(String &uuid) {
     String cmd("IBE0");
-    String resp;
-    if (!issueGet(cmd, resp)) {
-        return false;
-    }
-    uuid = resp;
-    return true;
+    return getString(cmd, uuid);
 }
 
 // AT+IBE0[0-F]{4} -> OK+Set:[0-F]{4}, AT+IBE1, AT+IBE2, AT+IBE3
 bool Modem::setBeaconUuid(const String &uuid) {
     String cmd("IBE0");
-    String resp;
-    return issueSet(cmd, uuid, resp);
+    return setString(cmd, uuid);
 }
 
 // AT+MARJ? -> OK+Get:[0-F]{4}
 bool Modem::getBeaconMajorVersion(String &version) {
     String cmd("MARJ");
-    String resp;
-    if (!issueGet(cmd, resp)) {
-        return false;
-    }
-    version = resp;
-    return true;
+    return getString(cmd, version);
 }
 
 // AT+MARJ[0-F]{4} -> OK+Set:[0-F]{4}
 bool Modem::setBeaconMajorVersion(const String &version) {
     String cmd("MARJ");
-    String resp;
-    return issueSet(cmd, version, resp);
+    return setString(cmd, version);
 }
 
 // AT+MINO? -> OK+Get:[0-F]{4}
 bool Modem::getBeaconMinorVersion(String &version) {
     String cmd("MINO");
-    String resp;
-    if (!issueGet(cmd, resp)) {
-        return false;
-    }
-    version = resp;
-    return true;
+    return getString(cmd, version);
 }
 
 // AT+MINO[0-F]{4} -> OK+Set:[0-F]{4}
 bool Modem::setBeaconMinorVersion(const String &version) {
     String cmd("MINO");
-    String resp;
-    return issueSet(cmd, version, resp);
+    return setString(cmd, version);
 }
 
 // AT+MEAS? -> OK+Get:[0-F]{2}
 bool Modem::getBeaconMeasuredPower(String &power) {
     String cmd("MEAS");
-    String resp;
-    if (!issueGet(cmd, resp)) {
-        return false;
-    }
-    power = resp;
-    return true;
+    return getString(cmd, power);
 }
 
 // AT+MEAS[0-F]{2} -> OK+Set:[0-F]{2}
 bool Modem::setBeaconMeasuredPower(const String &power) {
     String cmd("MEAS");
-    String resp;
-    return issueSet(cmd, power, resp);
+    return setString(cmd, power);
 }
 
-/*
-mode_t Modem::getUartMode(); // AT+MODE? -> OK+Get:[0-2]
-void Modem::setUartMode(mode_t); // AT+MODE[0-2] -> OK+Set:[0-2]
+// AT+MODE? -> OK+Get:[0-2]
+bool Modem::getUartMode(mode_t &mode) {
+    String cmd("MODE");
+    return getChar(cmd, (uint8_t &)mode);
+}
 
-bool Modem::notificationsEnabled(); // AT+NOTI? -> OK+Get:[0-1]
-void Modem::enableNotifications(bool); // AT+NOTI[0-1] -> OK+Set:[0-1]
-bool Modem::getNotifyAddressOnDisconnect(); // AT+NOTP? -> OK+Get:[0-1]
-void Modem::setNotifyAddressOnDisconnect(bool); // AT+NOTP[0-1] ->
-OK+Set:[0-1]
+// AT+MODE[0-2] -> OK+Set:[0-2]
+bool Modem::setUartMode(mode_t mode) {
+    String cmd("MODE");
+    return setChar(cmd, (uint8_t)mode);
+}
 
-string Modem::getModuleName(); // AT+NAME? -> OK+NAME\w{1,13}
-void Modem::setModuleName(string); // AT+NAME\w{1,13} -> OK+Set\w{1,13}
+// AT+NOTI? -> OK+Get:[0-1]
+bool Modem::notificationsEnabled(bool &enabled) {
+    String cmd("NOTI");
+    return getBool(cmd, enabled);
+}
 
-parity_t Modem::getParity(); // AT+PARI? -> OK+Get:[0-2]
-void Modem::setParity(parity_t); // AT+PARI[0-2] -> OK+Set:[0-2]
+// AT+NOTI[0-1] -> OK+Set:[0-1]
+bool Modem::enableNotifications(bool enable) {
+    String cmd("NOTI");
+    return setBool(cmd, enable);
+}
 
-bool Modem::getPio(uint8_t); // AT+PIO[1-B]? -> OK+PIO[1-B]:[0-1]
-void Modem::setPio(uint8_t, bool); // AT+PIO[1-B][0-1] -> OK+PIO[1-B]:[0-1]
+// AT+NOTP? -> OK+Get:[0-1]
+bool Modem::notifyAddressOnDisconnectEnabled(bool &enabled) {
+    String cmd("NOTP");
+    return getBool(cmd, enabled);
+}
 
-bool Modem::autoSleepEnabled(); // AT+PWRM? -> OK+Get:[0-1]
-void Modem::enableAutoSleep(bool); // AT+PWRM[0-1] -> OK+Set:[0-1]
+// AT+NOTP[0-1] -> OK+Set:[0-1]
+bool Modem::enableNotifyAddressOnDisconnect(bool enable) {
+    String cmd("NOTP");
+    return setBool(cmd, enable);
+}
 
-power_t Modem::getModulePower(); // AT+POWE? -> OK+Get:[0-7]
-void Modem::setModulePower(power_t); // AT+POWE[0-7] -> OK+Set:[0-7]
+// AT+NAME? -> OK+NAME\w{1,13}
+bool Modem::getModuleName(String &name) {
+    String cmd("NAME");
+    return getString(cmd, name);
+}
 
-bool Modem::reliableAdvertisingEnabled(); // AT+RELI? -> OK+Get:[0-1]
-void Modem::enableReliableAdvertising(bool); // AT+RELI[0-1] -> OK+Set:[0-1]
+// AT+NAME\w{1,13} -> OK+Set\w{1,13}
+bool Modem::setModuleName(const String &name) {
+    String cmd("NAME");
+    return setString(cmd, name);
+}
 
-void Modem::resetConfiguration(); // AT+RENEW -> OK+RENEW
-void Modem::reset(); // AT+RESET -> OK+RESET
+// AT+PARI? -> OK+Get:[0-2]
+bool Modem::getParity(parity_t &parity) {
+    String cmd("PARI");
+    return getChar(cmd, (uint8_t &)parity);
+}
 
-role_t Modem::getRole(); // AT+ROLE? -> OK+Get:[0-1]
-void Modem::setRole(role_t); // AT+ROLE[0-1] -> OK+Set:[0-1]
+// AT+PARI[0-2] -> OK+Set:[0-2]
+bool Modem::setParity(parity_t parity) {
+    String cmd("PARI");
+    return setChar(cmd, (uint8_t)parity);
+}
 
-string Modem::getLastConnected(); // AT+RADD? -> OK+RADD:[0-F]{6}
+// AT+PIO[1-B]? -> OK+PIO[1-B]:[0-1]
+bool Modem::getPio(uint8_t id, bool &state) {
+    String cmd("PIO");
+    String strid(id, HEX);
+    cmd.concat(strid);
+    return getBool(cmd, state);
+}
 
-talk_t Modem::getTalkMethod(); // AT+RESP? -> OK+Get:[0-2]
-void Modem::setTalkMethod(talk_t); // AT+RESP[0-2] -> OK+Set:[0-2]
+// AT+PIO[1-B][0-1] -> OK+PIO[1-B]:[0-1]
+bool Modem::setPio(uint8_t id, bool state) {
+    String cmd("PIO");
+    String strid(id, HEX);
+    cmd.concat(strid);
+    return setBool(cmd, state);
+}
 
-system_key_t Modem::getSystemKeySetting(); // AT+SYSK? ->
-OK+Get:[0-1] void Modem::setSystemKeySetting(system_key_t); //
-AT+SYSK[0-1] -> OK+Set:[0-1]
+// AT+PWRM? -> OK+Get:[0-1]
+bool Modem::autoSleepEnabled(bool &enabled) {
+    String cmd("PWRM");
+    return getBool(cmd, enabled);
+}
 
-stop_t Modem::getStopBit(); // AT+STOP? -> OK+Get:[0-1]
-void Modem::setStopBit(stop_t); // AT+STOP[0-1] -> OK+Set:[0-1]
+// AT+PWRM[0-1] -> OK+Set:[0-1]
+bool Modem::enableAutoSleep(bool enable) {
+    String cmd("PWRM");
+    return setBool(cmd, enable);
+}
 
-void Modem::sleep(); // AT+SLEEP -> OK+SLEEP
+// AT+POWE? -> OK+Get:[0-7]
+bool Modem::getModulePower(power_t &power) {
+    String cmd("POWE");
+    return getChar(cmd, (uint8_t &)power);
+}
 
-void Modem::start(); // AT+START -> OK+START
+// AT+POWE[0-7] -> OK+Set:[0-7]
+bool Modem::setModulePower(power_t power) {
+    String cmd("POWE");
+    return setChar(cmd, (uint8_t)power);
+}
 
-uint8_t Modem::getScanDuration(); // AT+SCAN? -> OK+Get[1-5]
-void Modem::setScanDuration(uint8_t); // AT+SCAN[1-5] -> OK+Set[1-5]
+// AT+RELI? -> OK+Get:[0-1]
+bool Modem::reliableAdvertisingEnabled(bool &enabled) {
+    String cmd("RELI");
+    return getBool(cmd, enabled);
+}
 
-bool Modem::saveLastDeviceEnabled(); // AT+SAVE? -> OK+Get:[0-1]
-void Modem::enableSaveLastDevice(bool); // AT+SAVE[0-1] -> OK+Set:[0-1]
+// AT+RELI[0-1] -> OK+Set:[0-1]
+bool Modem::enableReliableAdvertising(bool enable) {
+    String cmd("RELI");
+    return setBool(cmd, enable);
+}
 
-bool Modem::nameDiscoveryEnabled(); // AT+SHOW? -> OK+Get:[0-1]
-void Modem::enableNameDiscovery(bool); // AT+SHOW[0-1] -> OK+Set:[0-1]
+// AT+RENEW -> OK+RENEW
+bool Modem::resetConfiguration() {
+    String cmd("RENEW");
+    String resp;
+    return issueCommand(cmd, resp);
+}
 
-uint16_t Modem::getServiceUuid(); // AT+UUID? -> OK+Get:'0x'[0-F]{4}
-void Modem::setServiceUuid(uint16_t); // AT+UUID'0x'[0-F]{4} ->
-OK+Set:'0x'[0-F]{4}
+// AT+RESET -> OK+RESET
+bool Modem::reset() {
+    String cmd("RESET");
+    String resp;
+    return issueCommand(cmd, resp);
+}
 
-string Modem::getFirmwareVersion(); // AT+VERR/AT+VERS -> String
-*/
+// AT+ROLE? -> OK+Get:[0-1]
+bool Modem::getRole(role_t &role) {
+    String cmd("ROLE");
+    return getChar(cmd, (uint8_t &)role);
+}
+
+// AT+ROLE[0-1] -> OK+Set:[0-1]
+bool Modem::setRole(role_t role) {
+    String cmd("ROLE");
+    return setChar(cmd, (uint8_t)role);
+}
+
+// AT+RADD? -> OK+RADD:[0-F]{6}
+bool Modem::getLastConnected(String &address) {
+    String cmd("RADD");
+    return getString(cmd, address);
+}
+
+// AT+RESP? -> OK+Get:[0-2]
+bool Modem::getTalkMethod(talk_t &method) {
+    String cmd("RESP");
+    return getChar(cmd, (uint8_t &)method);
+}
+
+// AT+RESP[0-2] -> OK+Set:[0-2]
+bool Modem::setTalkMethod(talk_t method) {
+    String cmd("RESP");
+    return setChar(cmd, (uint8_t)method);
+}
+
+// AT+SYSK? -> OK+Get:[0-1]
+bool Modem::getSystemKeySetting(system_key_t &key_setting) {
+    String cmd("SYSK");
+    return getChar(cmd, (uint8_t &)key_setting);
+}
+
+// AT+SYSK[0-1] -> OK+Set:[0-1]
+bool Modem::setSystemKeySetting(system_key_t key_setting) {
+    String cmd("SYSK");
+    return setChar(cmd, (uint8_t)key_setting);
+}
+
+// AT+STOP? -> OK+Get:[0-1]
+bool Modem::getStopBit(stop_t &stop_bit) {
+    String cmd("STOP");
+    return getChar(cmd, (uint8_t &)stop_bit);
+}
+
+// AT+STOP[0-1] -> OK+Set:[0-1]
+bool Modem::setStopBit(stop_t stop_bit) {
+    String cmd("STOP");
+    return setChar(cmd, (uint8_t)stop_bit);
+}
+
+// AT+SLEEP -> OK+SLEEP
+bool Modem::sleep() {
+    String cmd("SLEEP");
+    String resp;
+    return issueCommand(cmd, resp);
+}
+
+// AT+START -> OK+START
+bool Modem::start() {
+    String cmd("START");
+    String resp;
+    return issueCommand(cmd, resp);
+}
+
+// AT+SCAN? -> OK+Get[1-5]
+bool Modem::getScanDuration(uint8_t &seconds) {
+    String cmd("SCAN");
+    return getChar(cmd, seconds);
+}
+
+// AT+SCAN[1-5] -> OK+Set[1-5]
+bool Modem::setScanDuration(uint8_t seconds) {
+    String cmd("SCAN");
+    return setChar(cmd, seconds);
+}
+
+// AT+SAVE? -> OK+Get:[0-1]
+bool Modem::saveLastDeviceEnabled(bool &enabled) {
+    String cmd("SAVE");
+    return getBool(cmd, enabled);
+}
+
+// AT+SAVE[0-1] -> OK+Set:[0-1]
+bool Modem::enableSaveLastDevice(bool enable) {
+    String cmd("SAVE");
+    return setBool(cmd, enable);
+}
+
+// AT+SHOW? -> OK+Get:[0-1]
+bool Modem::nameDiscoveryEnabled(bool &enabled) {
+    String cmd("SHOW");
+    return getBool(cmd, enabled);
+}
+
+// AT+SHOW[0-1] -> OK+Set:[0-1]
+bool Modem::enableNameDiscovery(bool enable) {
+    String cmd("SHOW");
+    return setBool(cmd, enable);
+}
+
+// AT+UUID? -> OK+Get:'0x'[0-F]{4}
+bool Modem::getServiceUuid(String &uuid) {
+    String cmd("UUID");
+    return getString(cmd, uuid);
+}
+
+// AT+UUID'0x'[0-F]{4} -> OK+Set:'0x'[0-F]{4}
+bool Modem::setServiceUuid(const String &uuid) {
+    String cmd("UUID");
+    return setString(cmd, uuid);
+}
+
+// AT+VERR?/AT+VERS? -> OK+Get:String
+bool Modem::getFirmwareVersion(String &fwver) {
+    String cmd("VERR");
+    return getString(cmd, fwver);
+}

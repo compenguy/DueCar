@@ -12,7 +12,7 @@
 
 class Modem {
   public:
-    enum class adv_interval_t {
+    enum class adv_interval_t : uint8_t {
         c100ms = 0,
         c152_5ms,
         c211_25ms,
@@ -28,7 +28,7 @@ class Modem {
         c4000ms,
     };
 
-    enum class advertising_t {
+    enum class advertising_t : uint8_t {
         cAdvertisingScanResponseConnectable = 0,
         cOnlyAllowLastDevice,
         cAdvertisingScanResponse,
@@ -46,7 +46,7 @@ class Modem {
         cP3dbm
     };
 
-    enum class ll_connect_interval_t {
+    enum class ll_connect_interval_t : uint8_t {
         c7_5ms = 0,
         c10ms,
         c15ms,
@@ -59,9 +59,9 @@ class Modem {
         c4000ms
     };
 
-    enum class role_t { cPeripheral = 0, cCentral };
+    enum class role_t : uint8_t { cPeripheral = 0, cCentral };
 
-    enum class talk_t {
+    enum class talk_t : uint8_t {
         cWriteWithoutResponse = 0,
         cWriteWithResponse,
         cWriteResponseOptional
@@ -84,16 +84,16 @@ class Modem {
         String rssi;
     };
 
-    enum class output_state_t {
+    enum class output_state_t : uint8_t {
         cPio2LowPio3Low = 0,
         cPio2LowPio3High,
         cPio2HighPio3Low,
         cPio2HighPio3High
     };
 
-    enum class system_key_t { cCancel = 0, cFactoryReset };
+    enum class system_key_t : uint8_t { cCancel = 0, cFactoryReset };
 
-    enum class response_t {
+    enum class response_t : uint8_t {
         cReconnecting,
         cConnecting,
         cError,
@@ -102,13 +102,13 @@ class Modem {
         cOther
     };
 
-    enum class mode_t {
+    enum class mode_t : uint8_t {
         cSendAndReceive = 0,
         cSendOnlyRemoteConfigures,
         cSendOnlyRemoteQueries,
     };
 
-    enum class rate_t {
+    enum class rate_t : uint8_t {
         c1200 = 0,
         c2400,
         c4800,
@@ -120,9 +120,9 @@ class Modem {
         c230400
     };
 
-    enum class parity_t { cNone = 0, cEven, cOdd };
+    enum class parity_t : uint8_t { cNone = 0, cEven, cOdd };
 
-    enum class stop_t { cOneBit = 0, cTwoBits };
+    enum class stop_t : uint8_t { cOneBit = 0, cTwoBits };
 
     Modem(Stream &stream) : stream(stream), deviceCount(0), beaconCount(0){};
 
@@ -132,6 +132,13 @@ class Modem {
     bool issueQuery(const String &, const String &, String &);
     bool issueGet(const String &, String &);
     bool issueSet(const String &, const String &, String &);
+
+    bool getBool(String &, bool &);
+    bool setBool(const String &, bool);
+    bool getChar(String &, uint8_t &);
+    bool setChar(const String &, uint8_t);
+    bool getString(const String &, String &);
+    bool setString(const String &, const String &);
 
     bool disconnect();
     bool getAddress(String &);
@@ -224,69 +231,67 @@ class Modem {
     bool getBeaconMeasuredPower(String &);
     bool setBeaconMeasuredPower(const String &);
 
-    /*
-    mode_t getUartMode(); // AT+MODE? -> OK+Get:[0-2]
-    void setUartMode(mode_t); // AT+MODE[0-2] -> OK+Set:[0-2]
+    bool getUartMode(mode_t &);
+    bool setUartMode(mode_t);
 
-    bool notificationsEnabled(); // AT+NOTI? -> OK+Get:[0-1]
-    void enableNotifications(bool); // AT+NOTI[0-1] -> OK+Set:[0-1]
-    bool getNotifyAddressOnDisconnect(); // AT+NOTP? -> OK+Get:[0-1]
-    void setNotifyAddressOnDisconnect(bool); // AT+NOTP[0-1] -> OK+Set:[0-1]
+    bool notificationsEnabled(bool &);
+    bool enableNotifications(bool);
+    bool notifyAddressOnDisconnectEnabled(bool &);
+    bool enableNotifyAddressOnDisconnect(bool);
 
-    String getModuleName(); // AT+NAME? -> OK+NAME\w{1,13}
-    void setModuleName(String&); // AT+NAME\w{1,13} -> OK+Set\w{1,13}
+    bool getModuleName(String &);
+    bool setModuleName(const String &);
 
-    parity_t getParity(); // AT+PARI? -> OK+Get:[0-2]
-    void setParity(parity_t); // AT+PARI[0-2] -> OK+Set:[0-2]
+    bool getParity(parity_t &);
+    bool setParity(parity_t);
 
-    bool getPio(uint8_t); // AT+PIO[1-B]? -> OK+PIO[1-B]:[0-1]
-    void setPio(uint8_t, bool); // AT+PIO[1-B][0-1] -> OK+PIO[1-B]:[0-1]
+    bool getPio(uint8_t, bool &); // AT+PIO[1-B]? -> OK+PIO[1-B]:[0-1]
+    bool setPio(uint8_t, bool);   // AT+PIO[1-B][0-1] -> OK+PIO[1-B]:[0-1]
 
-    bool autoSleepEnabled(); // AT+PWRM? -> OK+Get:[0-1]
-    void enableAutoSleep(bool); // AT+PWRM[0-1] -> OK+Set:[0-1]
+    bool autoSleepEnabled(bool &); // AT+PWRM? -> OK+Get:[0-1]
+    bool enableAutoSleep(bool);    // AT+PWRM[0-1] -> OK+Set:[0-1]
 
-    Ble::power_t getModulePower(); // AT+POWE? -> OK+Get:[0-7]
-    void setModulePower(Ble::power_t); // AT+POWE[0-7] -> OK+Set:[0-7]
+    bool getModulePower(power_t &); // AT+POWE? -> OK+Get:[0-7]
+    bool setModulePower(power_t);   // AT+POWE[0-7] -> OK+Set:[0-7]
 
-    bool reliableAdvertisingEnabled(); // AT+RELI? -> OK+Get:[0-1]
-    void enableReliableAdvertising(bool); // AT+RELI[0-1] -> OK+Set:[0-1]
+    bool reliableAdvertisingEnabled(bool &); // AT+RELI? -> OK+Get:[0-1]
+    bool enableReliableAdvertising(bool);    // AT+RELI[0-1] -> OK+Set:[0-1]
 
-    void resetConfiguration(); // AT+RENEW -> OK+RENEW
-    void reset(); // AT+RESET -> OK+RESET
+    bool resetConfiguration(); // AT+RENEW -> OK+RENEW
+    bool reset();              // AT+RESET -> OK+RESET
 
-    Ble::role_t getRole(); // AT+ROLE? -> OK+Get:[0-1]
-    void setRole(Ble::role_t); // AT+ROLE[0-1] -> OK+Set:[0-1]
+    bool getRole(role_t &); // AT+ROLE? -> OK+Get:[0-1]
+    bool setRole(role_t);   // AT+ROLE[0-1] -> OK+Set:[0-1]
 
-    String getLastConnected(); // AT+RADD? -> OK+RADD:[0-F]{6}
+    bool getLastConnected(String &); // AT+RADD? -> OK+RADD:[0-F]{6}
 
-    Ble::talk_t getTalkMethod(); // AT+RESP? -> OK+Get:[0-2]
-    void setTalkMethod(Ble::talk_t); // AT+RESP[0-2] -> OK+Set:[0-2]
+    bool getTalkMethod(talk_t &); // AT+RESP? -> OK+Get:[0-2]
+    bool setTalkMethod(talk_t);   // AT+RESP[0-2] -> OK+Set:[0-2]
 
-    system_key_t getSystemKeySetting(); // AT+SYSK? -> OK+Get:[0-1]
-    void setSystemKeySetting(system_key_t); // AT+SYSK[0-1] ->
-    OK+Set:[0-1]
+    bool getSystemKeySetting(system_key_t &); // AT+SYSK? -> OK+Get:[0-1]
+    bool setSystemKeySetting(system_key_t);   // AT+SYSK[0-1] -> OK+Set:[0-1]
 
-    stop_t getStopBit(); // AT+STOP? -> OK+Get:[0-1]
-    void setStopBit(stop_t); // AT+STOP[0-1] -> OK+Set:[0-1]
+    bool getStopBit(stop_t &); // AT+STOP? -> OK+Get:[0-1]
+    bool setStopBit(stop_t);   // AT+STOP[0-1] -> OK+Set:[0-1]
 
-    void sleep(); // AT+SLEEP -> OK+SLEEP
+    bool sleep(); // AT+SLEEP -> OK+SLEEP
 
-    void start(); // AT+START -> OK+START
+    bool start(); // AT+START -> OK+START
 
-    uint8_t getScanDuration(); // AT+SCAN? -> OK+Get[1-5]
-    void setScanDuration(uint8_t); // AT+SCAN[1-5] -> OK+Set[1-5]
+    bool getScanDuration(uint8_t &); // AT+SCAN? -> OK+Get[1-5]
+    bool setScanDuration(uint8_t);   // AT+SCAN[1-5] -> OK+Set[1-5]
 
-    bool saveLastDeviceEnabled(); // AT+SAVE? -> OK+Get:[0-1]
-    void enableSaveLastDevice(bool); // AT+SAVE[0-1] -> OK+Set:[0-1]
+    bool saveLastDeviceEnabled(bool &); // AT+SAVE? -> OK+Get:[0-1]
+    bool enableSaveLastDevice(bool);    // AT+SAVE[0-1] -> OK+Set:[0-1]
 
-    bool nameDiscoveryEnabled(); // AT+SHOW? -> OK+Get:[0-1]
-    void enableNameDiscovery(bool); // AT+SHOW[0-1] -> OK+Set:[0-1]
+    bool nameDiscoveryEnabled(bool &); // AT+SHOW? -> OK+Get:[0-1]
+    bool enableNameDiscovery(bool);    // AT+SHOW[0-1] -> OK+Set:[0-1]
 
-    uint16_t getServiceUuid(); // AT+UUID? -> OK+Get:'0x'[0-F]{4}
-    void setServiceUuid(uint16_t); // AT+UUID'0x'[0-F]{4} -> OK+Set:'0x'[0-F]{4}
+    bool getServiceUuid(String &); // AT+UUID? -> OK+Get:'0x'[0-F]{4}
+    bool setServiceUuid(
+        const String &); // AT+UUID'0x'[0-F]{4} -> OK+Set:'0x'[0-F]{4}
 
-    String getFirmwareVersion(); // AT+VERR/AT+VERS -> String
-    */
+    bool getFirmwareVersion(String &); // AT+VERR/AT+VERS -> OK+Get:String
 
   private:
     Stream &stream;

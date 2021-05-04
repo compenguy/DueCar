@@ -58,6 +58,18 @@ void setup() {
     Serial.println("Program started");
     Serial.print("BLE Help: ");
     Serial.println(ble.help());
+    String fwver;
+    if (ble.getFirmwareVersion(fwver)) {
+        Serial.println(fwver);
+    } else {
+        Serial.println("Failed querying BLE firmware version");
+    }
+    String address;
+    if (ble.getAddress(address)) {
+        Serial.println(address);
+    } else {
+        Serial.println("Failed querying BLE device address.");
+    }
     // Give the USB port time to quiesce
     delay(200);
 }
@@ -65,12 +77,7 @@ void setup() {
 void loop() {
     // Process USB tasks
     // usb.Task();
-    String address;
-    if (ble.getAddress(address)) {
-        Serial.println(address);
-    } else {
-        Serial.println("Failed querying BLE device address.");
-    }
+
     Serial.println("Discovering devices...");
     if (ble.discoverDevices()) {
         Serial.println("Success!");
