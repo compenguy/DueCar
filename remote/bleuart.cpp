@@ -30,7 +30,8 @@ bool Modem::makePeripheral(bool autostart) {
     // AT+IMME[0-1]
     bool cur_manualstart;
     bool want_manualstart = !autostart;
-    if (manualStartupEnabled(cur_manualstart) && cur_manualstart != want_manualstart) {
+    if (manualStartupEnabled(cur_manualstart) &&
+        cur_manualstart != want_manualstart) {
         if (!enableManualStartup(want_manualstart)) {
             // TODO: in case of failure, rebuild the prior state?
             return false;
@@ -48,6 +49,15 @@ bool Modem::makePeripheral(bool autostart) {
     if (dirty) {
         reset();
     }
+}
+
+Modem::response_t Modem::easyReconnect() {
+    response_t resp = response_t::cOther;
+    if (!makeCentral()) {
+        return resp;
+    }
+    reconnect(resp, true);
+    return resp;
 }
 
 // AT -> OK/OK+LOST
@@ -212,16 +222,31 @@ bool Modem::clearLastConnectedDeviceAddress() {
 }
 
 // AT+CONNL -> OK+CONN[LEFN]
-bool Modem::reconnect(response_t &response) {
-    String cmd("CONN");
-    String val("L");
+bool Modem::reconnect(response_t &response, bool waitForConnection) {
+    String cmd("AT+CONNL");
+    stream.print(cmd);
     String resp;
-    if (!issueSet(cmd, val, resp)) {
+    // TODO: timeout, in case OK+CONN isn't coming, like if we're already
+    // connected
+    while (resp.indexOf("OK+CONN") < 0) {
+        if (stream.available()) {
+            resp += stream.read();
+        }
+    }
+    while (!stream.available()) {
+    }
+    char code = stream.peek();
+    if (code != 'L' && code != 'E' && code != 'F' && code != 'N') {
         return false;
     }
-    switch (resp[0]) {
+    stream.read();
+
+    switch (code) {
     case 'L':
         response = response_t::cReconnecting;
+        if (waitForConnection) {
+            waitConnected();
+        }
         break;
     case 'E':
         response = response_t::cError;
@@ -240,16 +265,34 @@ bool Modem::reconnect(response_t &response) {
 }
 
 // AT+CONN[0-5] -> OK+CONN[AEF]
-bool Modem::connectId(uint8_t id, response_t &response) {
-    String cmd("CONN");
+bool Modem::connectId(uint8_t id, response_t &response,
+                      bool waitForConnection) {
+    String cmd("AT+CONN");
     String val(id, HEX);
+    cmd.concat(val);
+    stream.print(cmd);
     String resp;
-    if (!issueSet(cmd, val, resp)) {
+    // TODO: timeout, in case OK+CONN isn't coming, like if we're already
+    // connected
+    while (resp.indexOf("OK+CONN") < 0) {
+        if (stream.available()) {
+            resp += stream.read();
+        }
+    }
+    while (!stream.available()) {
+    }
+    char code = stream.peek();
+    if (code != 'A' && code != 'E' && code != 'F') {
         return false;
     }
-    switch (resp[0]) {
+    stream.read();
+
+    switch (code) {
     case 'A':
         response = response_t::cConnecting;
+        if (waitForConnection) {
+            waitConnected();
+        }
         break;
     case 'E':
         response = response_t::cError;
@@ -265,22 +308,33 @@ bool Modem::connectId(uint8_t id, response_t &response) {
 }
 
 // AT+CO[N1][0-2][0-9]{6} -> OK+CO[N1][N1][AEF]
-bool Modem::connectAddress(const String &addr, response_t &response) {
-    String cmd("CON");
+bool Modem::connectAddress(const String &addr, response_t &response,
+                           bool waitForConnection) {
+    String cmd("AT+CON");
+    cmd.concat(addr);
+    stream.print(cmd);
     String resp;
-    if (!issueSet(cmd, addr, resp)) {
+    // TODO: timeout, in case OK+CONN isn't coming, like if we're already
+    // connected
+    while (resp.indexOf("OK+CONN") < 0) {
+        if (stream.available()) {
+            resp += stream.read();
+        }
+    }
+    while (!stream.available()) {
+    }
+    char code = stream.peek();
+    if (code != 'A' && code != 'E' && code != 'F') {
         return false;
     }
+    stream.read();
 
-    if (resp.charAt(0) != 'N') {
-        response = response_t::cOther;
-        return true;
-    }
-
-    char p = resp.charAt(1);
-    switch (p) {
+    switch (code) {
     case 'A':
         response = response_t::cConnecting;
+        if (waitForConnection) {
+            waitConnected();
+        }
         break;
     case 'E':
         response = response_t::cError;
@@ -296,99 +350,71 @@ bool Modem::connectAddress(const String &addr, response_t &response) {
 }
 // TODO: connectRandom() AT+CO1??? -> OK+CO11[AEF]
 
-// AT+DISC? -> OK+DIS[C0-2]([SE]|[0-F]{6})
+bool Modem::waitConnected() {
+    // TODO: add a timeout
+    String buffer;
+    while (buffer.indexOf("OK+CONN", 1) < 0) {
+        buffer.concat(stream.readString());
+    }
+    Serial.println(buffer);
+    return true;
+}
+
+// AT+DISC? -> OK+DISCS/OK+DIS[0-2]:[0-F]{6}:-[0-9]{3}:(\w+)?/OK+DISCE
 bool Modem::discoverDevices() {
     // TODO: DIS0/DIS1/DIS2 not well documented - what causes them,
     // what do they mean?
     deviceCount = 0;
 
     stream.print("AT+DISC?");
-    String resp;
+    String resp = stream.readString();
 
-    /*
-    // TODO: test discovery when in peripheral mode, verify output result
-    // and that we correctly error out; use a timeout?  timeout based on discovery time.
-    while (!resp.endsWith("OK+DISCE")) {
-        if (stream.available()) {
-            Serial.print("Discovery found: ");
-            char one = stream.read();
-            Serial.println(one, HEX);
-            resp += one;
-            Serial.print("Built up response: ");
-            Serial.println(resp);
-        }
-    }
-
-    Serial.println("Discovery complete.");
-    Serial.println("Discovery dump: ");
-    Serial.println(resp);
-
-    return parseDeviceDiscoveryResults(resp);
-}
-
-    if (!resp.startsWith("OK+DISCS")) {
-        return false;
-    }
-    resp = resp.substring(strlen("OK+DISCS"));
-    */
-
-    if (!readResponse(resp) || !resp.equals("DISCS")) {
-        // Drain the stream of any lingering output
-        String extra = stream.readString();
-        Serial.print("Unexpected response to discovery: ");
-        Serial.println(resp);
-        Serial.print("Draining the communication buffer: ");
-        Serial.println(extra);
+    // TODO: Only error out here if we exceed a timeout without receiving the
+    // OK+DISCS response
+    if (resp.indexOf("OK+DISCS") < 0) {
         return false;
     }
 
     // We got the "DISCS" response... we can't get off this train until we
     // receive DISCE (TODO: or perhaps if we've exceeded the scan timeout)
+    String discbuf = resp.substring(resp.indexOf("OK+DISCS"));
+    while (!discbuf.endsWith("OK+DISCE")) {
+        discbuf.concat(stream.readString());
+    }
 
-    bool first = true;
-    for (int i = 0; i < BLE_MAX_DISCOVERED_DEVICES;) {
-        // Busy-wait until we've definitely gotten enough data for a response
-        while(!readResponse(resp)) {
-            Serial.println("Waiting for more devices to be discovered...");
-        }
-        if (resp.equals("DISCE")) {
-            break;
-        } else if (resp.startsWith("DIS")) {
-            // We have to be careful about how we increment i, because
-            // 1) we don't want to increment it the first time through, so that
-            //    the first device goes in the zeroth slot
-            // 2) we increment when we discover a new device, right before
-            //    assigning that device so that NAME responses get
-            //    correctly paired with the device specified before
-            // 3) we don't quit immediately when the table is full - we
-            //    might or might not get a NAME response after the last
-            //    device in the table, so we only quit when we get
-            //    a DISCE response, or when we've read the first DISC
-            //    response that won't fit
-            if (!first) {
-                ++i;
-            }
-            if (i >= BLE_MAX_DISCOVERED_DEVICES) {
-                break;
-            }
+    Serial.println(discbuf);
+
+    for (int i = 0;
+         i < BLE_MAX_DISCOVERED_DEVICES && !discbuf.startsWith("OK+DISCE");) {
+        unsigned int end = discbuf.indexOf("OK+", 1);
+        String entry = discbuf.substring(0, end);
+        discbuf = discbuf.substring(end);
+        if (entry.equals("OK+DISCS")) {
+            continue;
+        } else if (entry.startsWith("OK+DIS0:")) {
+            long start;
+            long end;
             devices[i].id = i;
-            devices[i].mac = resp.substring(strlen("DIS") + 2);
-            devices[i].name = "";
-            deviceCount = i;
-            first = false;
-        } else if (resp.startsWith("NAME:")) {
-            devices[i].name = resp.substring(strlen("NAME:"));
+
+            start = strlen("DIS0");
+            end = entry.indexOf(':', start);
+            devices[i].mac = entry.substring(start, end);
+
+            start = end + 1;
+            end = entry.indexOf(':', start);
+            // devices[i].power = entry.substring(start, end);
+
+            start = end + 1;
+            end = entry.indexOf(':', start);
+            devices[i].name = entry.substring(start, end);
+
+            deviceCount = ++i;
+        } else {
+            Serial.print("Unhandled discovery entry: ");
+            Serial.println(entry);
         }
     }
-    // If our table filled up, there are more responses
-    // Drain them off.
-    if (!resp.equals("DISCE")) {
-        do {
-        } while (readResponse(resp) && !resp.equals("") &&
-                 !resp.equals("DISCE"));
-    }
-    Serial.print("Devices discovered: ");
-    Serial.println(deviceCount);
+
     return true;
 }
 
@@ -405,60 +431,68 @@ bool Modem::getDevice(uint8_t id, device_t &device) {
 
 // AT+DISI? -> OK+DISC????
 bool Modem::discoverBeacons() {
-    String cmd("DISI");
-    String respprefix("DIS");
-    String resp;
-
     beaconCount = 0;
 
-    if (!issueQuery(cmd, respprefix, resp)) {
+    stream.print("AT+DISI?");
+    String resp = stream.readString();
+
+    // TODO: Only error out here if we exceed a timeout without receiving the
+    // OK+DISCS response
+    if (resp.indexOf("OK+DISCS") < 0) {
         return false;
     }
-    for (int i = 0; i < BLE_MAX_DISCOVERED_DEVICES; ++i) {
-        if (!readResponse(resp)) {
-            return false;
-        }
-        if (resp.equals("DISCE")) {
-            break;
-        } else if (resp.startsWith("DIS")) {
-            long start = strlen("DIS");
-            long end = resp.indexOf(':', start);
-            beacons[i].id = i;
-            beacons[i].factory_id = resp.substring(start, end);
-            start = end + 1;
-            end = resp.indexOf(':', start);
-            beacons[i].uuid = resp.substring(start, end);
-            start = end + 1;
-            end = resp.indexOf(':', start);
-            beacons[i].majorVersion = resp.substring(start, end);
-            start = end + 1;
-            end = resp.indexOf(':', start);
-            beacons[i].minorVersion = resp.substring(start, end);
-            start = end + 1;
-            end = resp.indexOf(':', start);
-            beacons[i].minorVersion = resp.substring(start, end);
-            start = end + 1;
-            end = resp.indexOf(':', start);
-            beacons[i].power = resp.substring(start, end);
-            start = end + 1;
-            end = resp.indexOf(':', start);
-            beacons[i].mac = resp.substring(start, end);
-            start = end + 1;
-            end = resp.indexOf(':', start);
-            beacons[i].rssi = resp.substring(start, end);
 
-            beaconCount = i + 1;
+    // We got the "DISCS" response... we can't get off this train until we
+    // receive DISCE (TODO: or perhaps if we've exceeded the scan timeout)
+    String discbuf = resp.substring(resp.indexOf("OK+DISCS"));
+    while (!discbuf.endsWith("OK+DISCE")) {
+        discbuf.concat(stream.readString());
+    }
+
+    Serial.println(discbuf);
+
+    for (int i = 0;
+         i < BLE_MAX_DISCOVERED_DEVICES && !discbuf.startsWith("OK+DISCE");) {
+        unsigned int end = discbuf.indexOf("OK+", 1);
+        String entry = discbuf.substring(0, end);
+        discbuf = discbuf.substring(end);
+        if (entry.equals("OK+DISCS")) {
+            continue;
+        } else if (entry.startsWith("OK+DIS0:")) {
+            long start = strlen("DIS");
+            long end = entry.indexOf(':', start);
+            beacons[i].id = i;
+            beacons[i].factory_id = entry.substring(start, end);
+            start = end + 1;
+            end = entry.indexOf(':', start);
+            beacons[i].uuid = entry.substring(start, end);
+            start = end + 1;
+            end = entry.indexOf(':', start);
+            beacons[i].majorVersion = entry.substring(start, end);
+            start = end + 1;
+            end = entry.indexOf(':', start);
+            beacons[i].minorVersion = entry.substring(start, end);
+            start = end + 1;
+            end = entry.indexOf(':', start);
+            beacons[i].minorVersion = entry.substring(start, end);
+            start = end + 1;
+            end = entry.indexOf(':', start);
+            beacons[i].power = entry.substring(start, end);
+            start = end + 1;
+            end = entry.indexOf(':', start);
+            beacons[i].mac = entry.substring(start, end);
+            start = end + 1;
+            end = entry.indexOf(':', start);
+            beacons[i].rssi = entry.substring(start, end);
+
+            beaconCount = ++i;
+        } else {
+            Serial.print("Unhandled discovery entry: ");
+            Serial.println(entry);
         }
     }
-    // If our table filled up, there are more responses
-    // Drain them off.
-    if (!resp.equals("DISCE")) {
-        do {
-            Serial.println("Draining unread responses from discovery.");
-        } while (readResponse(resp) && !resp.equals("") &&
-                 !resp.equals("DISCE"));
-    }
-    return beaconCount > 0;
+
+    return true;
 }
 
 uint8_t Modem::beaconsCount() { return beaconCount; }
@@ -692,15 +726,21 @@ bool Modem::setPio(uint8_t id, bool state) {
 }
 
 // AT+PWRM? -> OK+Get:[0-1]
+// Sense of 0/1 switched - 0 autosleeps, 1 doesn't
 bool Modem::autoSleepEnabled(bool &enabled) {
     String cmd("PWRM");
-    return getBool(cmd, enabled);
+    if (!getBool(cmd, enabled)) {
+        return false;
+    }
+    enabled = !enabled;
+    return true;
 }
 
 // AT+PWRM[0-1] -> OK+Set:[0-1]
+// Sense of 0/1 switched - 0 autosleeps, 1 doesn't
 bool Modem::enableAutoSleep(bool enable) {
     String cmd("PWRM");
-    return setBool(cmd, enable);
+    return setBool(cmd, !enable);
 }
 
 // AT+POWE? -> OK+Get:[0-7]
@@ -891,17 +931,13 @@ bool Modem::issueQuery(const String &cmd, const String &respprefix,
                        String &response) {
     String query(cmd + "?");
     String respprefix2(respprefix + ":");
-    Serial.print("Issuing query ");
-    Serial.println(query);
     if (!issueCommand(query, response)) {
         return false;
     }
     if (response.startsWith(respprefix2)) {
-        Serial.println("Got expected response.");
         response = response.substring(respprefix2.length());
         return true;
     }
-    Serial.print("Unexpected response ");
     Serial.println(response);
     return false;
 }
@@ -935,7 +971,8 @@ bool Modem::getBool(String &cmd, bool &val) {
 bool Modem::setBool(const String &cmd, bool val) {
     String intval((uint8_t)val, HEX);
     String resp;
-    return issueSet(cmd, intval, resp);
+    bool foo = issueSet(cmd, intval, resp);
+    return foo;
 }
 
 bool Modem::getChar(String &cmd, uint8_t &val) {

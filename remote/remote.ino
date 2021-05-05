@@ -3,19 +3,19 @@
 // USBHost - Version: Latest
 
 #include "GamepadController.h"
+#include "blecentral.h"
 #include "bleuart.h"
 #include <cstdio>
 
 // Initialize BLE Uart
 Modem ble(Serial1);
+Central blecentral(ble);
 
 // Initialize USB Controller
 USBHost usb;
 
 // Attach mouse controller to USB
 GamepadController gamepad(usb);
-
-char outbuf[64];
 
 // This function intercepts unknown gamepad reports
 void unhandledInput(uint32_t bufsize, uint8_t *buf) {
@@ -51,32 +51,80 @@ void digitalAxisChange(uint8_t id, uint8_t value) {
     Serial.print(" changed: ");
     Serial.println(value, HEX);
 }
+/*
+void configureBle() {
+    Serial.println("Resetting BLE interface...");
+    ble.resetConfiguration();
+    Serial.println("Setting high RX/TX gain...");
+    if (!ble.enableHighTxGain(true) || !ble.enableHighRxGain(true)) {
+        Serial.println("Error setting high gain mode.");
+    }
+    Serial.println("Setting high power mode.");
+    if (!ble.setModulePower(Modem::power_t::cP3dbm)) {
+        Serial.println("Error switching to high power mode.");
+    }
+    Serial.println("Attempting to reconnect to last connected device...");
+    if (ble.easyReconnect() != Modem::response_t::cReconnecting) {
+        Serial.println("Error connecting to last known device.");
+        connected = false;
+    } else {
+        Serial.println("Reconnected to device.");
+        connected = true;
+    }
+
+    if (!connected) {
+        Serial.println("Discovering remote devices...");
+        if (!ble.discoverDevices() && ble.devicesCount()) {
+            Serial.println("Error discovering devices, or no devices found.");
+        } else if (!ble.getDevice(default_device_id, device)) {
+            Serial.println("No device definition found for discovered device.");
+        } else if (!ble.connectId(default_device_id, response) ||
+                   response != Modem::response_t::cConnecting) {
+            Serial.print("Unable to connect to device id ");
+            Serial.print(default_device_id);
+            Serial.print(": ");
+            switch (response) {
+            case Modem::response_t::cReconnecting:
+                Serial.println(
+                    "Failure condition reported, but response indicates "
+                    "reconnecting to the device as normal");
+                break;
+            case Modem::response_t::cConnecting:
+                Serial.println("Failure condition reported, but response "
+                               "indicates connecting to the device as normal");
+                break;
+            case Modem::response_t::cError:
+                Serial.println("Connect error.");
+                break;
+            case Modem::response_t::cFail:
+                Serial.println("Connect fail.");
+                break;
+            case Modem::response_t::cNoAddress:
+                Serial.println("No address to connect to.");
+                break;
+            case Modem::response_t::cOther:
+                Serial.println("Unspecified error (Error error - no error for "
+                               "the error).");
+                break;
+            }
+        } else {
+            Serial.print("Connected to device.");
+            connected = true;
+        }
+    }
+}
+*/
 
 void setup() {
     Serial.begin(9600);
     Serial1.begin(9600);
-    Serial.println("Program started");
-    Serial.print("BLE Help: ");
-    Serial.println(ble.help());
-    String fwver;
-    if (ble.getFirmwareVersion(fwver)) {
-        Serial.println(fwver);
-    } else {
-        Serial.println("Failed querying BLE firmware version");
+    if (!blecentral.ready()) {
+        Serial.println("Error setting BLE in central mode");
     }
-    String address;
-    if (ble.getAddress(address)) {
-        Serial.println(address);
-    } else {
-        Serial.println("Failed querying BLE device address.");
+    if (!blecentral.connectLast()) {
+        Serial.println("Error connecting to last known client.");
     }
-    Serial.println("Switching to BLE central mode...");
-    if (!ble.makeCentral()) {
-        Serial.println("Error switching BLE to central mode.");
-    }
-    if (!ble.enableNameDiscovery(true)) {
-        Serial.println("Error enabling remote device name discovery.");
-    }
+
     // Give the USB port time to quiesce
     delay(200);
 }
@@ -85,25 +133,15 @@ void loop() {
     // Process USB tasks
     // usb.Task();
 
-    Serial.println("Discovering devices...");
-    if (ble.discoverDevices()) {
-        Serial.println("Success!");
-        uint8_t count = ble.devicesCount();
-        for (uint8_t i = 0; i < count; i++) {
-            Modem::device_t device;
-            if (ble.getDevice(i, device)) {
-                Serial.print(device.id);
-                Serial.print(": ");
-                Serial.print(device.name);
-                Serial.print("[");
-                Serial.print(device.mac);
-                Serial.println("]");
-            } else {
-                Serial.println("Invalid device id");
-            }
+    if (blecentral.isConnected()) {
+        for (uint8_t i = 0; i < 256; i++) {
+            Serial.print("Writing to bleserial: ");
+            Serial.println(i, HEX);
+            Serial1.write(i);
+            delay(100);
         }
     } else {
-        Serial.println("Discovery failed.");
+        blecentral.ready() && blecentral.connectLast();
     }
 
     delay(1000);

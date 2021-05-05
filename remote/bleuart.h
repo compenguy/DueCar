@@ -130,6 +130,10 @@ class Modem {
     bool makeCentral();
     bool makePeripheral(bool autostart);
 
+    // Convenience method for becoming central, then connecting to the last
+    // connected device
+    response_t easyReconnect();
+
     // Documented modem commands
     bool disconnect();
     bool getAddress(String &);
@@ -168,10 +172,11 @@ class Modem {
     bool setUpdateConnection(bool);
 
     bool clearLastConnectedDeviceAddress();
-    bool reconnect(response_t &);
-    bool connectId(uint8_t, response_t &);
-    bool connectAddress(const String &, response_t &);
+    bool reconnect(response_t &, bool waitConnected);
+    bool connectId(uint8_t, response_t &, bool waitConnected);
+    bool connectAddress(const String &, response_t &, bool waitConnected);
     // bool connectRandom(response_t&);
+    bool waitConnected();
 
     bool discoverDevices();
     uint8_t devicesCount();
