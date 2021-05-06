@@ -64,132 +64,132 @@ Modem::response_t Modem::easyReconnect() {
 bool Modem::disconnect() {
     String cmd("AT");
     String resp;
-    return issueCommand(cmd, resp);
+    return sendCommand(cmd, resp);
 }
 
 // AT+ADDR? -> OK+ADDR:MAC Address
 bool Modem::getAddress(String &addr) {
     String cmd("ADDR");
-    return getString(cmd, addr);
+    return sendQueryCommand(cmd, addr);
 }
 
 // AT+ADVI? -> OK+Get:[0-F]
 bool Modem::getAdvertisingInterval(adv_interval_t &interval) {
     String cmd("ADVI");
-    return getChar(cmd, (uint8_t &)interval);
+    return getByte(cmd, (uint8_t &)interval);
 }
 
 // AT+ADVI[0-F] -> OK+Set:[0-F]
 bool Modem::setAdvertisingInterval(adv_interval_t interval) {
     String cmd("ADVI");
-    return setChar(cmd, (uint8_t)interval);
+    return setByte(cmd, (uint8_t)interval);
 }
 
 // AT+ADTY? -> OK+Get:[0-3]
 bool Modem::getAdvertisingType(advertising_t &type) {
     String cmd("ADTY");
-    return getChar(cmd, (uint8_t &)type);
+    return getByte(cmd, (uint8_t &)type);
 }
 
 // AT+ADTY[0-3] -> OK+Set:[0-3]
 bool Modem::setAdvertisingType(advertising_t type) {
     String cmd("ADTY");
-    return setChar(cmd, (uint8_t)type);
+    return setByte(cmd, (uint8_t)type);
 }
 
 // AT+AFTC? -> OK+Get:[0-3] void
 bool Modem::getConnectedModulePinOutputState(output_state_t &state) {
     String cmd("AFTC");
-    return getChar(cmd, (uint8_t &)state);
+    return getByte(cmd, (uint8_t &)state);
 }
 
 // AT+AFTC[0-3] -> OK+Set:[0-3]
 bool Modem::setConnectedModulePinOutputState(output_state_t state) {
     String cmd("AFTC");
-    return setChar(cmd, (uint8_t)state);
+    return setByte(cmd, (uint8_t)state);
 }
 
 // AT+BEFC?  -> OK+Get:[0-3]
 bool Modem::getInitialModulePinOutputState(output_state_t &state) {
     String cmd("BEFC");
-    return getChar(cmd, (uint8_t &)state);
+    return getByte(cmd, (uint8_t &)state);
 }
 
 // AT+BEFC[0-3] -> OK+Set:[0-3]
 bool Modem::setInitialModulePinOutputState(output_state_t state) {
     String cmd("BEFC");
-    return setChar(cmd, (uint8_t)state);
+    return setByte(cmd, (uint8_t)state);
 }
 
 // AT+BAUD? -> OK+Get:[0-8]
 bool Modem::getBaudRate(rate_t &rate) {
     String cmd("BAUD");
-    return getChar(cmd, (uint8_t &)rate);
+    return getByte(cmd, (uint8_t &)rate);
 }
 
 // AT+BAUD[0-8] -> OK+Set:[0-8]
 bool Modem::setBaudRate(rate_t rate) {
     String cmd("BAUD");
-    return setChar(cmd, (uint8_t)rate);
+    return setByte(cmd, (uint8_t)rate);
 }
 
 // AT+CHAR? -> OK+Get:'0x'[0-F]{4}
 bool Modem::getCharacteristic(String &charc) {
     String cmd("CHAR");
-    return getString(cmd, charc);
+    return sendQueryCommand(cmd, charc);
 }
 
 // AT+CHAR'0x'[0-F]{4} -> OK+Set:'0x'[0-F]{4}
 bool Modem::setCharacteristic(const String &charc) {
     String cmd("CHAR");
-    return setString(cmd, charc);
+    return sendSetCommand(cmd, charc);
 }
 
 // AT+COMI? -> OK+Get:[0-9]
 bool Modem::getMinimumLinkLayerConnectionInterval(
     ll_connect_interval_t &interval) {
     String cmd("COMI");
-    return getChar(cmd, (uint8_t &)interval);
+    return getByte(cmd, (uint8_t &)interval);
 }
 
 // AT+COMI[0-9] -> OK+Set:[0-9]
 bool Modem::setMinimumLinkLayerConnectionInterval(
     ll_connect_interval_t interval) {
     String cmd("COMI");
-    return setChar(cmd, (uint8_t)interval);
+    return setByte(cmd, (uint8_t)interval);
 }
 
 // AT+COMA? -> OK+Get:[0-9]
 bool Modem::getMaximumLinkLayerConnectionInterval(
     ll_connect_interval_t &interval) {
     String cmd("COMA");
-    return getChar(cmd, (uint8_t &)interval);
+    return getByte(cmd, (uint8_t &)interval);
 }
 
 // AT+COMA[0-9] -> OK+Set:[0-9]
 bool Modem::setMaximumLinkLayerConnectionInterval(
     ll_connect_interval_t interval) {
     String cmd("COMA");
-    return setChar(cmd, (uint8_t)interval);
+    return setByte(cmd, (uint8_t)interval);
 }
 
 // AT+COLA? -> OK+Get:[0-4]
 bool Modem::getLinkLayerConnectionSlaveLatency(uint8_t &latency) {
     String cmd("COLA");
-    return getChar(cmd, latency);
+    return getByte(cmd, latency);
 }
 
 // AT+COLA[0-4] -> OK+Set:[0-4]
 bool Modem::setLinkLayerConnectionSlaveLatency(uint8_t latency) {
     String cmd("COLA");
-    return setChar(cmd, latency);
+    return setByte(cmd, latency);
 }
 
 // AT+COSU? -> OK+Get:[0-6]
 /* Effect of command unclear, description is duplicate of another command
 bool Modem::getUnknownInterval(uint8_t &interval) {
     String cmd("COSU");
-    return getChar(cmd, interval);
+    return getByte(cmd, interval);
 }
 */
 
@@ -197,7 +197,7 @@ bool Modem::getUnknownInterval(uint8_t &interval) {
 /* Effect of command unclear, description is duplicate of another command
 bool Modem::setUnknownInterval(uint8_t interval) {
     String cmd("COSU");
-    return setChar(cmd, interval);
+    return setByte(cmd, interval);
 }
 */
 
@@ -218,23 +218,24 @@ bool Modem::clearLastConnectedDeviceAddress() {
     String cmd("CLEAR");
     String val;
     String resp;
-    return issueSet(cmd, val, resp);
+    return sendSetCommand(cmd, val);
 }
 
 // AT+CONNL -> OK+CONN[LEFN]
 bool Modem::reconnect(response_t &response, bool waitForConnection) {
     String cmd("AT+CONNL");
+    Serial.println("Reconnecting...");
+    drainResponses();
     stream.print(cmd);
-    String resp;
-    // TODO: timeout, in case OK+CONN isn't coming, like if we're already
-    // connected
-    while (resp.indexOf("OK+CONN") < 0) {
-        if (stream.available()) {
-            resp += stream.read();
-        }
+
+    // OK+CONNF may take ~10 seconds to be reported
+    if (waitConnected(10100)) {
+        return false;
     }
+
     while (!stream.available()) {
     }
+    Serial.println("Reading connection response code...");
     char code = stream.peek();
     if (code != 'L' && code != 'E' && code != 'F' && code != 'N') {
         return false;
@@ -243,21 +244,26 @@ bool Modem::reconnect(response_t &response, bool waitForConnection) {
 
     switch (code) {
     case 'L':
+        Serial.println("Request response: Connecting");
         response = response_t::cReconnecting;
         if (waitForConnection) {
-            waitConnected();
+            waitConnected(10100);
         }
         break;
     case 'E':
+        Serial.println("Request response: Error");
         response = response_t::cError;
         break;
     case 'F':
+        Serial.println("Request response: Fail");
         response = response_t::cFail;
         break;
     case 'N':
+        Serial.println("Request response: No Address");
         response = response_t::cNoAddress;
         break;
     default:
+        Serial.println("Request response: Unrecognized response");
         response = response_t::cOther;
         break;
     }
@@ -270,17 +276,17 @@ bool Modem::connectId(uint8_t id, response_t &response,
     String cmd("AT+CONN");
     String val(id, HEX);
     cmd.concat(val);
+    drainResponses();
     stream.print(cmd);
-    String resp;
-    // TODO: timeout, in case OK+CONN isn't coming, like if we're already
-    // connected
-    while (resp.indexOf("OK+CONN") < 0) {
-        if (stream.available()) {
-            resp += stream.read();
-        }
+    // OK+CONNF may take ~10 seconds to be reported
+    if (waitConnected(10100)) {
+
+        return false;
     }
+
     while (!stream.available()) {
     }
+    Serial.println("Reading connection response code...");
     char code = stream.peek();
     if (code != 'A' && code != 'E' && code != 'F') {
         return false;
@@ -291,7 +297,7 @@ bool Modem::connectId(uint8_t id, response_t &response,
     case 'A':
         response = response_t::cConnecting;
         if (waitForConnection) {
-            waitConnected();
+            waitConnected(10100);
         }
         break;
     case 'E':
@@ -310,19 +316,17 @@ bool Modem::connectId(uint8_t id, response_t &response,
 // AT+CO[N1][0-2][0-9]{6} -> OK+CO[N1][N1][AEF]
 bool Modem::connectAddress(const String &addr, response_t &response,
                            bool waitForConnection) {
-    String cmd("AT+CON");
-    cmd.concat(addr);
+    String cmd("AT+CON" + addr);
+    drainResponses();
     stream.print(cmd);
-    String resp;
-    // TODO: timeout, in case OK+CONN isn't coming, like if we're already
-    // connected
-    while (resp.indexOf("OK+CONN") < 0) {
-        if (stream.available()) {
-            resp += stream.read();
-        }
+    // OK+CONNF may take ~10 seconds to be reported
+    if (waitConnected(10100)) {
+        return false;
     }
+
     while (!stream.available()) {
     }
+    Serial.println("Reading connection response code...");
     char code = stream.peek();
     if (code != 'A' && code != 'E' && code != 'F') {
         return false;
@@ -333,7 +337,7 @@ bool Modem::connectAddress(const String &addr, response_t &response,
     case 'A':
         response = response_t::cConnecting;
         if (waitForConnection) {
-            waitConnected();
+            waitConnected(10100);
         }
         break;
     case 'E':
@@ -350,13 +354,20 @@ bool Modem::connectAddress(const String &addr, response_t &response,
 }
 // TODO: connectRandom() AT+CO1??? -> OK+CO11[AEF]
 
-bool Modem::waitConnected() {
-    // TODO: add a timeout
-    String buffer;
-    while (buffer.indexOf("OK+CONN", 1) < 0) {
-        buffer.concat(stream.readString());
+bool Modem::waitConnected(long timeout) {
+    Serial.println("Waiting for modem connect acknowledgment");
+
+    char ack[] = "OK+CONN";
+    unsigned long old_timeout = stream.getTimeout();
+    stream.setTimeout(timeout);
+    bool found = stream.find(ack);
+    stream.setTimeout(old_timeout);
+    if (!found) {
+        Serial.println("Timed out waiting for connect acknowledgment.");
+        return false;
     }
-    Serial.println(buffer);
+
+    Serial.println("Connect request acknowledged");
     return true;
 }
 
@@ -365,10 +376,11 @@ bool Modem::discoverDevices() {
     // TODO: DIS0/DIS1/DIS2 not well documented - what causes them,
     // what do they mean?
     deviceCount = 0;
-
+    drainResponses();
     stream.print("AT+DISC?");
     String resp = stream.readString();
 
+    // TODO: convert to readResponse();
     // TODO: Only error out here if we exceed a timeout without receiving the
     // OK+DISCS response
     if (resp.indexOf("OK+DISCS") < 0) {
@@ -432,8 +444,9 @@ bool Modem::getDevice(uint8_t id, device_t &device) {
 // AT+DISI? -> OK+DISC????
 bool Modem::discoverBeacons() {
     beaconCount = 0;
-
+    drainResponses();
     stream.print("AT+DISI?");
+    // TODO: convert to readResponse();
     String resp = stream.readString();
 
     // TODO: Only error out here if we exceed a timeout without receiving the
@@ -547,8 +560,16 @@ bool Modem::enableHighRxGain(bool enable) {
 
 // AT+HELP? -> String
 String Modem::help() {
+    drainResponses();
     stream.print("AT+HELP?");
-    return stream.readString();
+    String tmp = stream.readString();
+    int start = tmp.indexOf("OK");
+    if (start >= 0) {
+        String resp = tmp.substring(start);
+        putBackResponse(resp);
+        tmp = tmp.substring(0, start);
+    }
+    return tmp;
 }
 
 // AT+IMME? -> OK+Get:[0-1]
@@ -592,7 +613,7 @@ bool Modem::getBeaconUuidPart(uint8_t quad, String &uuid) {
     String cmd("IBE");
     String part(quad, HEX);
     cmd.concat(part);
-    return getString(cmd, uuid);
+    return sendQueryCommand(cmd, uuid);
 }
 
 bool Modem::setBeaconUuid(const String &uuid) {
@@ -610,55 +631,55 @@ bool Modem::setBeaconUuidPart(uint8_t quad, const String &uuid) {
     String cmd("IBE");
     String part(quad, HEX);
     cmd.concat(part);
-    return setString(cmd, uuid);
+    return sendSetCommand(cmd, uuid);
 }
 
 // AT+MARJ? -> OK+Get:[0-F]{4}
 bool Modem::getBeaconMajorVersion(String &version) {
     String cmd("MARJ");
-    return getString(cmd, version);
+    return sendQueryCommand(cmd, version);
 }
 
 // AT+MARJ[0-F]{4} -> OK+Set:[0-F]{4}
 bool Modem::setBeaconMajorVersion(const String &version) {
     String cmd("MARJ");
-    return setString(cmd, version);
+    return sendSetCommand(cmd, version);
 }
 
 // AT+MINO? -> OK+Get:[0-F]{4}
 bool Modem::getBeaconMinorVersion(String &version) {
     String cmd("MINO");
-    return getString(cmd, version);
+    return sendQueryCommand(cmd, version);
 }
 
 // AT+MINO[0-F]{4} -> OK+Set:[0-F]{4}
 bool Modem::setBeaconMinorVersion(const String &version) {
     String cmd("MINO");
-    return setString(cmd, version);
+    return sendSetCommand(cmd, version);
 }
 
 // AT+MEAS? -> OK+Get:[0-F]{2}
 bool Modem::getBeaconMeasuredPower(String &power) {
     String cmd("MEAS");
-    return getString(cmd, power);
+    return sendQueryCommand(cmd, power);
 }
 
 // AT+MEAS[0-F]{2} -> OK+Set:[0-F]{2}
 bool Modem::setBeaconMeasuredPower(const String &power) {
     String cmd("MEAS");
-    return setString(cmd, power);
+    return sendSetCommand(cmd, power);
 }
 
 // AT+MODE? -> OK+Get:[0-2]
 bool Modem::getUartMode(mode_t &mode) {
     String cmd("MODE");
-    return getChar(cmd, (uint8_t &)mode);
+    return getByte(cmd, (uint8_t &)mode);
 }
 
 // AT+MODE[0-2] -> OK+Set:[0-2]
 bool Modem::setUartMode(mode_t mode) {
     String cmd("MODE");
-    return setChar(cmd, (uint8_t)mode);
+    return setByte(cmd, (uint8_t)mode);
 }
 
 // AT+NOTI? -> OK+Get:[0-1]
@@ -688,25 +709,25 @@ bool Modem::enableNotifyAddressOnDisconnect(bool enable) {
 // AT+NAME? -> OK+NAME\w{1,13}
 bool Modem::getModuleName(String &name) {
     String cmd("NAME");
-    return getString(cmd, name);
+    return sendQueryCommand(cmd, name);
 }
 
 // AT+NAME\w{1,13} -> OK+Set\w{1,13}
 bool Modem::setModuleName(const String &name) {
     String cmd("NAME");
-    return setString(cmd, name);
+    return sendSetCommand(cmd, name);
 }
 
 // AT+PARI? -> OK+Get:[0-2]
 bool Modem::getParity(parity_t &parity) {
     String cmd("PARI");
-    return getChar(cmd, (uint8_t &)parity);
+    return getByte(cmd, (uint8_t &)parity);
 }
 
 // AT+PARI[0-2] -> OK+Set:[0-2]
 bool Modem::setParity(parity_t parity) {
     String cmd("PARI");
-    return setChar(cmd, (uint8_t)parity);
+    return setByte(cmd, (uint8_t)parity);
 }
 
 // AT+PIO[1-B]? -> OK+PIO[1-B]:[0-1]
@@ -746,13 +767,13 @@ bool Modem::enableAutoSleep(bool enable) {
 // AT+POWE? -> OK+Get:[0-7]
 bool Modem::getModulePower(power_t &power) {
     String cmd("POWE");
-    return getChar(cmd, (uint8_t &)power);
+    return getByte(cmd, (uint8_t &)power);
 }
 
 // AT+POWE[0-7] -> OK+Set:[0-7]
 bool Modem::setModulePower(power_t power) {
     String cmd("POWE");
-    return setChar(cmd, (uint8_t)power);
+    return setByte(cmd, (uint8_t)power);
 }
 
 // AT+RELI? -> OK+Get:[0-1]
@@ -771,94 +792,94 @@ bool Modem::enableReliableAdvertising(bool enable) {
 bool Modem::resetConfiguration() {
     String cmd("RENEW");
     String resp;
-    return issueCommand(cmd, resp);
+    return sendCommand(cmd, resp);
 }
 
 // AT+RESET -> OK+RESET
 bool Modem::reset() {
     String cmd("RESET");
     String resp;
-    return issueCommand(cmd, resp);
+    return sendCommand(cmd, resp);
 }
 
 // AT+ROLE? -> OK+Get:[0-1]
 bool Modem::getRole(role_t &role) {
     String cmd("ROLE");
-    return getChar(cmd, (uint8_t &)role);
+    return getByte(cmd, (uint8_t &)role);
 }
 
 // AT+ROLE[0-1] -> OK+Set:[0-1]
 bool Modem::setRole(role_t role) {
     String cmd("ROLE");
-    return setChar(cmd, (uint8_t)role);
+    return setByte(cmd, (uint8_t)role);
 }
 
 // AT+RADD? -> OK+RADD:[0-F]{6}
 bool Modem::getLastConnected(String &address) {
     String cmd("RADD");
-    return getString(cmd, address);
+    return sendQueryCommand(cmd, address);
 }
 
 // AT+RESP? -> OK+Get:[0-2]
 bool Modem::getTalkMethod(talk_t &method) {
     String cmd("RESP");
-    return getChar(cmd, (uint8_t &)method);
+    return getByte(cmd, (uint8_t &)method);
 }
 
 // AT+RESP[0-2] -> OK+Set:[0-2]
 bool Modem::setTalkMethod(talk_t method) {
     String cmd("RESP");
-    return setChar(cmd, (uint8_t)method);
+    return setByte(cmd, (uint8_t)method);
 }
 
 // AT+SYSK? -> OK+Get:[0-1]
 bool Modem::getSystemKeySetting(system_key_t &key_setting) {
     String cmd("SYSK");
-    return getChar(cmd, (uint8_t &)key_setting);
+    return getByte(cmd, (uint8_t &)key_setting);
 }
 
 // AT+SYSK[0-1] -> OK+Set:[0-1]
 bool Modem::setSystemKeySetting(system_key_t key_setting) {
     String cmd("SYSK");
-    return setChar(cmd, (uint8_t)key_setting);
+    return setByte(cmd, (uint8_t)key_setting);
 }
 
 // AT+STOP? -> OK+Get:[0-1]
 bool Modem::getStopBit(stop_t &stop_bit) {
     String cmd("STOP");
-    return getChar(cmd, (uint8_t &)stop_bit);
+    return getByte(cmd, (uint8_t &)stop_bit);
 }
 
 // AT+STOP[0-1] -> OK+Set:[0-1]
 bool Modem::setStopBit(stop_t stop_bit) {
     String cmd("STOP");
-    return setChar(cmd, (uint8_t)stop_bit);
+    return setByte(cmd, (uint8_t)stop_bit);
 }
 
 // AT+SLEEP -> OK+SLEEP
 bool Modem::sleep() {
     String cmd("SLEEP");
     String resp;
-    return issueCommand(cmd, resp);
+    return sendCommand(cmd, resp);
 }
 
 // AT+START -> OK+START
 bool Modem::start() {
     String cmd("START");
     String resp;
-    return issueCommand(cmd, resp);
+    return sendCommand(cmd, resp);
 }
 
 // AT+SCAN? -> OK+Get[1-5]
 bool Modem::getScanDuration(uint8_t &seconds) {
     String cmd("SCAN");
-    return getChar(cmd, seconds);
+    return getByte(cmd, seconds);
 }
 
 // AT+SCAN[1-5] -> OK+Set[1-5]
 bool Modem::setScanDuration(uint8_t seconds) {
     String cmd("SCAN");
-    return setChar(cmd, seconds);
+    return setByte(cmd, seconds);
 }
 
 // AT+SAVE? -> OK+Get:[0-1]
@@ -888,118 +909,178 @@ bool Modem::enableNameDiscovery(bool enable) {
 // AT+UUID? -> OK+Get:'0x'[0-F]{4}
 bool Modem::getServiceUuid(String &uuid) {
     String cmd("UUID");
-    return getString(cmd, uuid);
+    return sendQueryCommand(cmd, uuid);
 }
 
 // AT+UUID'0x'[0-F]{4} -> OK+Set:'0x'[0-F]{4}
 bool Modem::setServiceUuid(const String &uuid) {
     String cmd("UUID");
-    return setString(cmd, uuid);
+    return sendSetCommand(cmd, uuid);
 }
 
 // AT+VERR?/AT+VERS? -> OK+Get:String
 bool Modem::getFirmwareVersion(String &fwver) {
     String cmd("VERR");
-    return getString(cmd, fwver);
+    return sendQueryCommand(cmd, fwver);
 }
 
 // Helper methods
-bool Modem::readResponse(String &response) {
-    String tmp(stream.readString());
-    if (tmp.startsWith("OK+")) {
-        response = tmp.substring(strlen("OK+"));
-        return true;
-    } else if (response.startsWith("OK")) {
-        response = tmp.substring(strlen("OK"));
-        return true;
-    }
-    response = tmp;
-    return false;
+bool Modem::readResponse(String &resp, unsigned long timeout) {
+    // Save the current timeout so we can restore it after the read operation
+    unsigned long old_timeout = stream.getTimeout();
+    stream.setTimeout(timeout);
+
+    bool ret = readResponse(resp);
+
+    // Restore the old timeout
+    stream.setTimeout(old_timeout);
+    return ret;
 }
 
-bool Modem::issueCommand(const String &args, String &response) {
+bool Modem::readResponse(String &resp) {
+    // Take whatever's ready within the timeout already set, and add it to the
+    // buf
+    responseBuf += stream.readString();
+
+    // Parse out the next response from the buffer
+    String tmp;
+    int startResp = responseBuf.indexOf("OK");
+    int endResp = responseBuf.indexOf("OK", startResp + 1);
+
+    if (startResp >= 0 && endResp >= 0) {
+        tmp = responseBuf.substring(startResp, endResp);
+        responseBuf = responseBuf.substring(endResp);
+    } else if (startResp >= 0) {
+        tmp = responseBuf.substring(startResp);
+        responseBuf = "";
+    } else {
+        return false;
+    }
+
+    // Divert notifications into object storage rather than returning them
+    bool isNotification = false;
+    if (tmp.equals("OK+LOST")) {
+        connected = false;
+        isNotification = true;
+    } else if (tmp.equals("OK+CONN")) {
+        connected = true;
+        isNotification = true;
+    } else if (tmp.startsWith("OK+CONN:")) {
+        // Requires AT+NOTI1 and AT+NOTP1 message
+        connected = true;
+        remoteAddress = tmp.substring(strlen("OK+CONN:"));
+        isNotification = true;
+    } else if (tmp.startsWith("OK+NAME:") &&
+               responseBuf.indexOf("OK+DISCE") != -1) {
+        // Requires AT+SHOW1, maybe also AT+NOTI1
+        devices[deviceCount - 1].name = tmp.substring(strlen("OK+NAME:"));
+        isNotification = true;
+    }
+    if (isNotification) {
+        return readResponse(resp);
+    }
+
+    resp = tmp;
+    return true;
+}
+
+void Modem::putBackResponse(const String &resp) {
+    String newResp(resp + responseBuf);
+    responseBuf = newResp;
+}
+
+void Modem::drainResponses() {
+    // We could just erase the buffer, but we want to make
+    // sure notifications still get handled
+    String tmp;
+    while (readResponse(tmp, 1)) {
+        yield();
+    }
+    // All notifications handled.  Burn that sucker to the ground!
+    responseBuf = "";
+    return;
+}
+
+bool Modem::sendCommand(const String &args, String &response) {
     String command("AT");
     if (args.length()) {
         command.concat("+");
-        command.concat(args);
     }
+    drainResponses();
     stream.print(command);
-    return readResponse(response);
+    stream.print(args);
+    String tmp;
+    if (!readResponse(tmp)) {
+        return false;
+    }
+    response = tmp.substring(command.length());
+    return true;
 }
 
-bool Modem::issueQuery(const String &cmd, const String &respprefix,
-                       String &response) {
+bool Modem::sendQueryCommand(const String &cmd, String &response) {
     String query(cmd + "?");
-    String respprefix2(respprefix + ":");
-    if (!issueCommand(query, response)) {
+    String tmp;
+    if (!sendCommand(query, tmp)) {
         return false;
     }
-    if (response.startsWith(respprefix2)) {
-        response = response.substring(respprefix2.length());
-        return true;
+    while (!tmp.startsWith("Get:")) {
+        if (!readResponse(tmp)) {
+            return false;
+        }
     }
-    Serial.println(response);
-    return false;
+    response = tmp.substring(strlen("Get:"));
+    return true;
 }
 
-bool Modem::issueGet(const String &cmd, String &response) {
-    String prefix("Get");
-    return issueQuery(cmd, prefix, response);
-}
-
-bool Modem::issueSet(const String &cmd, const String &args, String &response) {
+bool Modem::sendSetCommand(const String &cmd, const String &args) {
     String set(cmd + args);
-    if (!issueCommand(set, response)) {
+    String tmp;
+    if (!sendCommand(set, tmp)) {
         return false;
     }
-    if (response.startsWith("Set:")) {
-        response = response.substring(strlen("Set:"));
-        return args.equals(response);
+    String validreply("Set:" + args);
+    while (!tmp.equals(validreply)) {
+        if (!readResponse(tmp)) {
+            return false;
+        }
     }
-    return false;
+    return true;
 }
 
-bool Modem::getBool(String &cmd, bool &val) {
-    String resp;
-    if (!issueGet(cmd, resp)) {
+bool Modem::getBool(const String &cmd, bool &val) {
+    String tmp;
+    if (!sendQueryCommand(cmd, tmp)) {
         return false;
     }
-    val = (bool)(resp.toInt());
+    while (tmp.length() > 1 && tmp[0] != '0' && tmp[0] != '1') {
+        if (!readResponse(tmp)) {
+            return false;
+        }
+    }
+    val = (bool)(tmp[0] - '0');
     return true;
 }
 
 bool Modem::setBool(const String &cmd, bool val) {
     String intval((uint8_t)val, HEX);
-    String resp;
-    bool foo = issueSet(cmd, intval, resp);
-    return foo;
+    return sendSetCommand(cmd, intval);
 }
 
-bool Modem::getChar(String &cmd, uint8_t &val) {
-    String resp;
-    if (!issueGet(cmd, resp)) {
+bool Modem::getByte(const String &cmd, uint8_t &val) {
+    String tmp;
+    if (!sendQueryCommand(cmd, tmp)) {
         return false;
     }
-    val = (uint8_t)(resp.toInt());
+    while (tmp.length() != 1) {
+        if (!readResponse(tmp)) {
+            return false;
+        }
+    }
+    val = tmp[0];
     return true;
 }
 
-bool Modem::setChar(const String &cmd, uint8_t val) {
+bool Modem::setByte(const String &cmd, uint8_t val) {
     String intval((uint8_t)val, HEX);
-    String resp;
-    return issueSet(cmd, intval, resp);
-}
-
-bool Modem::getString(const String &cmd, String &val) {
-    String resp;
-    if (!issueGet(cmd, resp)) {
-        return false;
-    }
-    val = resp;
-    return true;
-}
-
-bool Modem::setString(const String &cmd, const String &val) {
-    String resp;
-    return issueSet(cmd, val, resp);
+    return sendSetCommand(cmd, intval);
 }

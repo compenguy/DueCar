@@ -124,7 +124,9 @@ class Modem {
 
     enum class stop_t : uint8_t { cOneBit = 0, cTwoBits };
 
-    Modem(Stream &stream) : stream(stream), deviceCount(0), beaconCount(0){};
+    Modem(Stream &stream)
+        : stream(stream), deviceCount(0), beaconCount(0), connected(false),
+          remoteAddress(){};
 
     // Convenience methods for switching between BLE peripheral and Central
     bool makeCentral();
@@ -176,7 +178,7 @@ class Modem {
     bool connectId(uint8_t, response_t &, bool waitConnected);
     bool connectAddress(const String &, response_t &, bool waitConnected);
     // bool connectRandom(response_t&);
-    bool waitConnected();
+    bool waitConnected(long timeout);
 
     bool discoverDevices();
     uint8_t devicesCount();
@@ -282,21 +284,22 @@ class Modem {
     bool getFirmwareVersion(String &);
 
     // Helper functions
+    bool readResponse(String &, unsigned long timeout);
     bool readResponse(String &);
-    bool issueCommand(const String &, String &);
+    void putBackResponse(const String &);
+    void drainResponses();
 
-    bool issueQuery(const String &, const String &, String &);
-    bool issueGet(const String &, String &);
-    bool issueSet(const String &, const String &, String &);
+    bool sendCommand(const String &, String &);
+    bool sendQueryCommand(const String &, String &);
+    bool sendSetCommand(const String &, const String &);
 
-    bool getBool(String &, bool &);
+    bool getBool(const String &, bool &);
     bool setBool(const String &, bool);
-    bool getChar(String &, uint8_t &);
-    bool setChar(const String &, uint8_t);
-    bool getString(const String &, String &);
-    bool setString(const String &, const String &);
+    bool getByte(const String &, uint8_t &);
+    bool setByte(const String &, uint8_t);
 
   private:
+    String responseBuf;
     bool parseDeviceDiscoveryResults(const String &);
 
     Stream &stream;
@@ -304,6 +307,10 @@ class Modem {
     uint8_t deviceCount;
     beacon_t beacons[BLE_MAX_DISCOVERED_DEVICES];
     uint8_t beaconCount;
+
+    // Notifications
+    bool connected;
+    String remoteAddress;
 };
 
 #endif /* BLEUART_H_INCLUDED */

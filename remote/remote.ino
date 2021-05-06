@@ -118,12 +118,21 @@ void configureBle() {
 void setup() {
     Serial.begin(9600);
     Serial1.begin(9600);
+    Serial.println("==============================");
+    Serial.println("P R O G R A M   S T A R T");
+    Serial.println("==============================");
     if (!blecentral.ready()) {
         Serial.println("Error setting BLE in central mode");
     }
-    if (!blecentral.connectLast()) {
+    Serial.println("==============================");
+    if (blecentral.isReady() && !blecentral.connectLast()) {
         Serial.println("Error connecting to last known client.");
+        ble.discoverDevices();
+        if (ble.devicesCount() && !blecentral.connectId(0)) {
+            Serial.println("Found device, but unable to connect to it.");
+        }
     }
+    Serial.println("==============================");
 
     // Give the USB port time to quiesce
     delay(200);
@@ -141,7 +150,15 @@ void loop() {
             delay(100);
         }
     } else {
-        blecentral.ready() && blecentral.connectLast();
+        Serial.println("Connection lost. Retrying...");
+        blecentral.ready();
+        if (blecentral.isReady() && !blecentral.connectLast()) {
+            Serial.println("Error connecting to last known client.");
+            ble.discoverDevices();
+            if (ble.devicesCount() && !blecentral.connectId(0)) {
+                Serial.println("Found device, but unable to connect to it.");
+            }
+        }
     }
 
     delay(1000);
