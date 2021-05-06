@@ -3,7 +3,7 @@
 #ifndef BLECENTRAL_H_INCLUDED
 #define BLECENTRAL_H_INCLUDED
 
-#include "bleuart.h"
+#include "HM18ModemManager.h"
 
 class Central {
   public:

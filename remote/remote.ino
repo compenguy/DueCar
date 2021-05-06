@@ -3,8 +3,8 @@
 // USBHost - Version: Latest
 
 #include "GamepadController.h"
+#include "HM18ModemManager.h"
 #include "blecentral.h"
-#include "bleuart.h"
 #include <cstdio>
 
 // Initialize BLE Uart
