@@ -51,7 +51,20 @@ void digitalAxisChange(uint8_t id, uint8_t value) {
     Serial.println(value, HEX);
 }
 
-bool configureModem() {
+void serial_echo_setup() {
+    ble.disconnect();
+    ble.resetConfiguration();
+    ble.makePeripheral(true);
+}
+
+void serial_echo() {
+    while (Serial1.available()) {
+        Serial.write(Serial1.read());
+    }
+}
+
+void ble_app_setup() {
+    Serial1.begin(38400);
     Serial1.setTimeout(100);
     Serial.println("Configuring modem...");
     ble.disconnect();
@@ -64,6 +77,7 @@ bool configureModem() {
     ble.enableNotifyAddressOnDisconnect(true) ||
         Serial.println("NotifyAddressOnDisconnect disabled.");
     ble.enableNameDiscovery(true) || Serial.println("Name discovery disabled.");
+    ble.setBaudRate(Modem::rate_t::c38400) || Serial.println("Baudrate unchanged.");
     ble.enableHighRxGain(true) ||
         Serial.println("High antenna rx gain disabled.");
     // ble.enableHighTxGain(true) || Serial.println("High antenna tx gain
@@ -72,7 +86,7 @@ bool configureModem() {
         Serial.println("High radio power disabled.");
 }
 
-bool ensureDeviceConnection() {
+bool ensure_ble_connection() {
     if (ble.isConnected()) {
         return true;
     }
@@ -88,13 +102,24 @@ bool ensureDeviceConnection() {
     }
 }
 
+
+void ble_app() {
+    if (ensure_ble_connection()) {
+        Serial.println("Writing over modem: 'f'");
+        Serial1.write('f');
+    } else {
+        delay(10 * 1000);
+    }
+    delay(1000);
+}
+
 void setup() {
     Serial.begin(9600);
-    Serial1.begin(9600);
     Serial.println("==============================");
     Serial.println("  P R O G R A M   S T A R T  ");
     Serial.println("==============================");
-    configureModem();
+    ble_app_setup();
+    // serial_echo_setup();
     Serial.println("==============================");
 }
 
@@ -102,11 +127,6 @@ void loop() {
     // Process USB tasks
     // usb.Task();
 
-    if (ensureDeviceConnection()) {
-        Serial.println("Writing over modem: 'f'");
-        Serial1.write('f');
-    } else {
-        delay(10 * 1000);
-    }
-    delay(1000);
+    ble_app();
+    // serial_echo();
 }
