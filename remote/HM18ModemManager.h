@@ -8,7 +8,11 @@
 #include <Arduino.h>
 #include <stdint.h>
 
-#define BLE_MAX_DISCOVERED_DEVICES 12
+#define BLE_MAX_DISCOVERED_DEVICES 16
+#define BLE_STARTUP_DELAY 200
+#define BLE_TIMEOUT 100
+// Some devices require a longer timeout
+//#define BLE_TIMEOUT 250
 
 class Modem {
   public:
@@ -73,17 +77,6 @@ class Modem {
         String name;
     };
 
-    struct beacon_t {
-        uint8_t id;
-        String factory_id;
-        String uuid;
-        String majorVersion;
-        String minorVersion;
-        String power;
-        String mac;
-        String rssi;
-    };
-
     enum class output_state_t : uint8_t {
         cPio2LowPio3Low = 0,
         cPio2LowPio3High,
@@ -124,18 +117,49 @@ class Modem {
 
     enum class stop_t : uint8_t { cOneBit = 0, cTwoBits };
 
-    Modem(Stream &stream)
-        : stream(stream), deviceCount(0), beaconCount(0), connected(false),
-          remoteAddress(){};
+
+  private:
+    Stream &stream;
+    int statePin;
+
+    unsigned long commandTimeout;
+    void startCommandTimer(unsigned long);
+    void expireCommandTimer();
+    bool commandTimedOut();
+    
+    String responseBuf;
+
+
+
+    bool discoveringDevices;
+    device_t devices[BLE_MAX_DISCOVERED_DEVICES];
+    uint8_t deviceCount;
+    void parseDiscoveredDevice(const String &);
+
+    // Notifications
+    bool connected;
+    String remoteAddress;
+
+  public:
+    Modem(Stream &stream) : Modem(stream, -1) {};
+
+    Modem(Stream &stream, int state_pin)
+        : stream(stream), statePin(statePin), discoveringDevices(false), deviceCount(0),
+          connected(false), remoteAddress() {
+
+        delay(BLE_STARTUP_DELAY);
+        enableStateDetection(state_pin);
+    };
+
+    void enableStateDetection(int pin);
+    bool readState();
 
     // Convenience methods for switching between BLE peripheral and Central
     bool makeCentral();
     bool makePeripheral(bool autostart);
 
-    // Convenience method for becoming central, then connecting to the last
-    // connected device
-    response_t easyReconnect();
-
+    bool isConnected();
+    
     // Documented modem commands
     bool disconnect();
     bool getAddress(String &);
@@ -181,12 +205,10 @@ class Modem {
     bool waitConnected(long timeout);
 
     bool discoverDevices();
+    bool discoverDevicesAsync();
+    bool discoverDevicesAsyncComplete();
     uint8_t devicesCount();
     bool getDevice(uint8_t, device_t &);
-
-    bool discoverBeacons();
-    uint8_t beaconsCount();
-    bool getBeacon(uint8_t, beacon_t &);
 
     bool characteristic2Enabled(bool &);
     bool enableCharacteristic2(bool);
@@ -204,23 +226,6 @@ class Modem {
 
     bool manualStartupEnabled(bool &);
     bool enableManualStartup(bool);
-
-    bool beaconEnabled(bool &);
-    bool enableBeacon(bool);
-
-    bool getBeaconUuid(String &);
-    bool getBeaconUuidPart(uint8_t quad, String &);
-    bool setBeaconUuid(const String &);
-    bool setBeaconUuidPart(uint8_t quad, const String &);
-
-    bool getBeaconMajorVersion(String &);
-    bool setBeaconMajorVersion(const String &);
-
-    bool getBeaconMinorVersion(String &);
-    bool setBeaconMinorVersion(const String &);
-
-    bool getBeaconMeasuredPower(String &);
-    bool setBeaconMeasuredPower(const String &);
 
     bool getUartMode(mode_t &);
     bool setUartMode(mode_t);
@@ -249,7 +254,7 @@ class Modem {
     bool enableReliableAdvertising(bool);
 
     bool resetConfiguration();
-    bool reset();
+    bool softReset();
 
     bool getRole(role_t &);
     bool setRole(role_t);
@@ -293,24 +298,10 @@ class Modem {
     bool sendQueryCommand(const String &, String &);
     bool sendSetCommand(const String &, const String &);
 
+    bool getHexDigit(const String &, uint8_t &);
+    bool setHexDigit(const String &, uint8_t);
     bool getBool(const String &, bool &);
     bool setBool(const String &, bool);
-    bool getByte(const String &, uint8_t &);
-    bool setByte(const String &, uint8_t);
-
-  private:
-    String responseBuf;
-    bool parseDeviceDiscoveryResults(const String &);
-
-    Stream &stream;
-    device_t devices[BLE_MAX_DISCOVERED_DEVICES];
-    uint8_t deviceCount;
-    beacon_t beacons[BLE_MAX_DISCOVERED_DEVICES];
-    uint8_t beaconCount;
-
-    // Notifications
-    bool connected;
-    String remoteAddress;
 };
 
 #endif /* BLEUART_H_INCLUDED */

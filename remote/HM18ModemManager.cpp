@@ -1,32 +1,66 @@
 
 #include "HM18ModemManager.h"
 
+void Modem::enableStateDetection(int pinNumber) {
+    statePin = pinNumber;
+    pinMode(statePin, INPUT);
+}
+
+bool Modem::readState() {
+    if (statePin != -1) {
+        //Serial.print("[Modem::readState] Reading from State pin ");
+        //Serial.println(statePin);
+        // blink = disconnected
+        // solid = connected
+        
+        unsigned long p1 = pulseIn(statePin, HIGH, 2000000);
+        unsigned long p2 = pulseIn(statePin, LOW, 2000000);
+        if (p1 && p2) {
+            //Serial.println("State pin is blinking");
+        } else {
+            int state = digitalRead(statePin);
+            if (p1 || p2) {
+                //Serial.println("State pin has transitioned to ");
+                //Serial.println(state);
+            } else if (state == HIGH) {
+                //Serial.println("[Modem::readState] Connection state LED is solid ON");
+                return true;
+            } else {
+                Serial.println("[Modem::readState] Connection state LED is solid OFF");
+            }
+        }
+    }
+    return false;
+}
+
 bool Modem::makeCentral() {
-    bool dirty = false;
+    //Serial.println("[Modem::makeCentral] Ensuring we're in immediate mode");
     // AT+IMME1
     bool cur_manualstart;
     if (manualStartupEnabled(cur_manualstart) && !cur_manualstart) {
+        //Serial.println("[Modem::makeCentral] Not in immediate mode. Switching...");
         if (!enableManualStartup(true)) {
             // TODO: in case of failure, rebuild the prior state?
+            Serial.println("[Modem::makeCentral] Failed to switch into immediate mode");
             return false;
         }
-        dirty = true;
     }
+    //Serial.println("[Modem::makeCentral] In immediate mode");
+    //Serial.println("[Modem::makeCentral] Ensuring we're in central role");
     // AT+ROLE1
     role_t cur_role;
     if (getRole(cur_role) && cur_role != role_t::cCentral) {
+        //Serial.println("[Modem::makeCentral] Not in central role. Switching...");
         if (!setRole(role_t::cCentral)) {
+            Serial.println("[Modem::makeCentral] Failed to switch into central role");
             return false;
         }
-        dirty = true;
     }
-    if (dirty) {
-        reset();
-    }
+    //Serial.println("[Modem::makeCentral] In central role");
+    return true;
 }
 
 bool Modem::makePeripheral(bool autostart) {
-    bool dirty = false;
     // AT+IMME[0-1]
     bool cur_manualstart;
     bool want_manualstart = !autostart;
@@ -36,7 +70,6 @@ bool Modem::makePeripheral(bool autostart) {
             // TODO: in case of failure, rebuild the prior state?
             return false;
         }
-        dirty = true;
     }
     // AT+ROLE0
     role_t cur_role;
@@ -44,25 +77,24 @@ bool Modem::makePeripheral(bool autostart) {
         if (!setRole(role_t::cPeripheral)) {
             return false;
         }
-        dirty = true;
     }
-    if (dirty) {
-        reset();
-    }
+    return true;
 }
 
-Modem::response_t Modem::easyReconnect() {
-    response_t resp = response_t::cOther;
-    if (!makeCentral()) {
-        return resp;
+bool Modem::isConnected() {
+    drainResponses();
+    if (statePin != -1) {
+        //Serial.println("[Modem::isConnected] Reading connection state pin");
+        return readState();
+    } else {
+        //Serial.println("[Modem::isConnected] Cannot validate current connection state, but a connection has been made before this session");
+        return connected;
     }
-    reconnect(resp, true);
-    return resp;
 }
 
 // AT -> OK/OK+LOST
 bool Modem::disconnect() {
-    String cmd("AT");
+    String cmd;
     String resp;
     return sendCommand(cmd, resp);
 }
@@ -76,61 +108,61 @@ bool Modem::getAddress(String &addr) {
 // AT+ADVI? -> OK+Get:[0-F]
 bool Modem::getAdvertisingInterval(adv_interval_t &interval) {
     String cmd("ADVI");
-    return getByte(cmd, (uint8_t &)interval);
+    return getHexDigit(cmd, (uint8_t &)interval);
 }
 
 // AT+ADVI[0-F] -> OK+Set:[0-F]
 bool Modem::setAdvertisingInterval(adv_interval_t interval) {
     String cmd("ADVI");
-    return setByte(cmd, (uint8_t)interval);
+    return setHexDigit(cmd, (uint8_t)interval);
 }
 
 // AT+ADTY? -> OK+Get:[0-3]
 bool Modem::getAdvertisingType(advertising_t &type) {
     String cmd("ADTY");
-    return getByte(cmd, (uint8_t &)type);
+    return getHexDigit(cmd, (uint8_t &)type);
 }
 
 // AT+ADTY[0-3] -> OK+Set:[0-3]
 bool Modem::setAdvertisingType(advertising_t type) {
     String cmd("ADTY");
-    return setByte(cmd, (uint8_t)type);
+    return setHexDigit(cmd, (uint8_t)type);
 }
 
 // AT+AFTC? -> OK+Get:[0-3] void
 bool Modem::getConnectedModulePinOutputState(output_state_t &state) {
     String cmd("AFTC");
-    return getByte(cmd, (uint8_t &)state);
+    return getHexDigit(cmd, (uint8_t &)state);
 }
 
 // AT+AFTC[0-3] -> OK+Set:[0-3]
 bool Modem::setConnectedModulePinOutputState(output_state_t state) {
     String cmd("AFTC");
-    return setByte(cmd, (uint8_t)state);
+    return setHexDigit(cmd, (uint8_t)state);
 }
 
 // AT+BEFC?  -> OK+Get:[0-3]
 bool Modem::getInitialModulePinOutputState(output_state_t &state) {
     String cmd("BEFC");
-    return getByte(cmd, (uint8_t &)state);
+    return getHexDigit(cmd, (uint8_t &)state);
 }
 
 // AT+BEFC[0-3] -> OK+Set:[0-3]
 bool Modem::setInitialModulePinOutputState(output_state_t state) {
     String cmd("BEFC");
-    return setByte(cmd, (uint8_t)state);
+    return setHexDigit(cmd, (uint8_t)state);
 }
 
 // AT+BAUD? -> OK+Get:[0-8]
 bool Modem::getBaudRate(rate_t &rate) {
     String cmd("BAUD");
-    return getByte(cmd, (uint8_t &)rate);
+    return getHexDigit(cmd, (uint8_t &)rate);
 }
 
 // AT+BAUD[0-8] -> OK+Set:[0-8]
 bool Modem::setBaudRate(rate_t rate) {
     String cmd("BAUD");
-    return setByte(cmd, (uint8_t)rate);
+    return setHexDigit(cmd, (uint8_t)rate);
 }
 
 // AT+CHAR? -> OK+Get:'0x'[0-F]{4}
@@ -149,47 +181,47 @@ bool Modem::setCharacteristic(const String &charc) {
 bool Modem::getMinimumLinkLayerConnectionInterval(
     ll_connect_interval_t &interval) {
     String cmd("COMI");
-    return getByte(cmd, (uint8_t &)interval);
+    return getHexDigit(cmd, (uint8_t &)interval);
 }
 
 // AT+COMI[0-9] -> OK+Set:[0-9]
 bool Modem::setMinimumLinkLayerConnectionInterval(
     ll_connect_interval_t interval) {
     String cmd("COMI");
-    return setByte(cmd, (uint8_t)interval);
+    return setHexDigit(cmd, (uint8_t)interval);
 }
 
 // AT+COMA? -> OK+Get:[0-9]
 bool Modem::getMaximumLinkLayerConnectionInterval(
     ll_connect_interval_t &interval) {
     String cmd("COMA");
-    return getByte(cmd, (uint8_t &)interval);
+    return getHexDigit(cmd, (uint8_t &)interval);
 }
 
 // AT+COMA[0-9] -> OK+Set:[0-9]
 bool Modem::setMaximumLinkLayerConnectionInterval(
     ll_connect_interval_t interval) {
     String cmd("COMA");
-    return setByte(cmd, (uint8_t)interval);
+    return setHexDigit(cmd, (uint8_t)interval);
 }
 
 // AT+COLA? -> OK+Get:[0-4]
 bool Modem::getLinkLayerConnectionSlaveLatency(uint8_t &latency) {
     String cmd("COLA");
-    return getByte(cmd, latency);
+    return getHexDigit(cmd, latency);
 }
 
 // AT+COLA[0-4] -> OK+Set:[0-4]
 bool Modem::setLinkLayerConnectionSlaveLatency(uint8_t latency) {
     String cmd("COLA");
-    return setByte(cmd, latency);
+    return setHexDigit(cmd, latency);
 }
 
 // AT+COSU? -> OK+Get:[0-6]
 /* Effect of command unclear, description is duplicate of another command
 bool Modem::getUnknownInterval(uint8_t &interval) {
     String cmd("COSU");
-    return getByte(cmd, interval);
+    return getHexDigit(cmd, interval);
 }
 */
 
@@ -197,7 +229,7 @@ bool Modem::getUnknownInterval(uint8_t &interval) {
 /* Effect of command unclear, description is duplicate of another command
 bool Modem::setUnknownInterval(uint8_t interval) {
     String cmd("COSU");
-    return setByte(cmd, interval);
+    return setHexDigit(cmd, interval);
 }
 */
 
@@ -226,23 +258,17 @@ bool Modem::reconnect(response_t &response, bool waitForConnection) {
     String cmd("AT+CONNL");
     Serial.println("Reconnecting...");
     drainResponses();
+    startCommandTimer(BLE_TIMEOUT);
     stream.print(cmd);
+    expireCommandTimer();
 
     // OK+CONNF may take ~10 seconds to be reported
-    if (waitConnected(10100)) {
+    String tmp;
+    if (!readResponse(tmp, 10100)) {
         return false;
     }
 
-    while (!stream.available()) {
-    }
-    Serial.println("Reading connection response code...");
-    char code = stream.peek();
-    if (code != 'L' && code != 'E' && code != 'F' && code != 'N') {
-        return false;
-    }
-    stream.read();
-
-    switch (code) {
+    switch (tmp[strlen("OK+CONN")]) {
     case 'L':
         Serial.println("Request response: Connecting");
         response = response_t::cReconnecting;
@@ -277,24 +303,29 @@ bool Modem::connectId(uint8_t id, response_t &response,
     String val(id, HEX);
     cmd.concat(val);
     drainResponses();
+    //Serial.print("[Modem::connectId] Connecting to device with id ");
+    //Serial.println(val);
+    startCommandTimer(BLE_TIMEOUT);
     stream.print(cmd);
+    expireCommandTimer();
     // OK+CONNF may take ~10 seconds to be reported
-    if (waitConnected(10100)) {
-
+    String tmp;
+    if (!readResponse(tmp, 10100)) {
+        Serial.println("[Modem::connectId] No response to connectId request.");
         return false;
     }
 
-    while (!stream.available()) {
+    String code = tmp.substring(strlen("OK+CONN"));
+    if (val.equals(code)) {
+        //Serial.println("[Modem::connectId] Success");
+        response = response_t::cConnecting;
+        return true;
     }
-    Serial.println("Reading connection response code...");
-    char code = stream.peek();
-    if (code != 'A' && code != 'E' && code != 'F') {
-        return false;
-    }
-    stream.read();
 
-    switch (code) {
+    //Serial.println("[Modem::connectId] Waiting for response code...");
+    switch (code[0]) {
     case 'A':
+        //Serial.println("[Modem::connectId] Connection in progress...");
         response = response_t::cConnecting;
         if (waitForConnection) {
             waitConnected(10100);
@@ -310,6 +341,7 @@ bool Modem::connectId(uint8_t id, response_t &response,
         response = response_t::cOther;
         break;
     }
+    //Serial.println("[Modem::connectId] Command complete");
     return true;
 }
 
@@ -318,22 +350,16 @@ bool Modem::connectAddress(const String &addr, response_t &response,
                            bool waitForConnection) {
     String cmd("AT+CON" + addr);
     drainResponses();
+    startCommandTimer(BLE_TIMEOUT);
     stream.print(cmd);
+    expireCommandTimer();
+    String tmp;
     // OK+CONNF may take ~10 seconds to be reported
-    if (waitConnected(10100)) {
+    if (!readResponse(tmp, 10100)) {
         return false;
     }
 
-    while (!stream.available()) {
-    }
-    Serial.println("Reading connection response code...");
-    char code = stream.peek();
-    if (code != 'A' && code != 'E' && code != 'F') {
-        return false;
-    }
-    stream.read();
-
-    switch (code) {
+    switch (tmp[strlen("OK+CONN")]) {
     case 'A':
         response = response_t::cConnecting;
         if (waitForConnection) {
@@ -367,67 +393,107 @@ bool Modem::waitConnected(long timeout) {
         return false;
     }
 
+    Serial.print("Connection response code: ");
+    Serial.println(stream.peek());
     Serial.println("Connect request acknowledged");
     return true;
 }
 
-// AT+DISC? -> OK+DISCS/OK+DIS[0-2]:[0-F]{6}:-[0-9]{3}:(\w+)?/OK+DISCE
+// AT+DISC? -> OK+DISCS/OK+DIS[0-F]:[0-F]{6}:-[0-9]{3}:(\w+)?/OK+DISCE
 bool Modem::discoverDevices() {
-    // TODO: DIS0/DIS1/DIS2 not well documented - what causes them,
-    // what do they mean?
-    deviceCount = 0;
-    drainResponses();
-    stream.print("AT+DISC?");
-    String resp = stream.readString();
-
-    // TODO: convert to readResponse();
-    // TODO: Only error out here if we exceed a timeout without receiving the
-    // OK+DISCS response
-    if (resp.indexOf("OK+DISCS") < 0) {
+    if (discoveringDevices) {
         return false;
     }
 
-    // We got the "DISCS" response... we can't get off this train until we
-    // receive DISCE (TODO: or perhaps if we've exceeded the scan timeout)
-    String discbuf = resp.substring(resp.indexOf("OK+DISCS"));
-    while (!discbuf.endsWith("OK+DISCE")) {
-        discbuf.concat(stream.readString());
+    role_t cur_role;
+    if (getRole(cur_role) && cur_role != role_t::cCentral) {
+        Serial.println("[Modem::discoverDevices] Attempting to discover when not in Central role.");
     }
+    
+    deviceCount = 0;
+    drainResponses();
 
-    Serial.println(discbuf);
-
-    for (int i = 0;
-         i < BLE_MAX_DISCOVERED_DEVICES && !discbuf.startsWith("OK+DISCE");) {
-        unsigned int end = discbuf.indexOf("OK+", 1);
-        String entry = discbuf.substring(0, end);
-        discbuf = discbuf.substring(end);
-        if (entry.equals("OK+DISCS")) {
+    String tmp;
+    //Serial.println("[Modem::discoverDevices] Sending AT+DISC?");
+    startCommandTimer(BLE_TIMEOUT);
+    stream.print("AT+DISC?");
+    expireCommandTimer();
+    if (!readResponse(tmp)) {
+        Serial.println("[Modem::discoverDevices] Discovery request failed");
+        return false;
+    }
+    //Serial.print("[Modem::discoverDevices] Discovery request response: ");
+    //Serial.println(tmp);
+    //Serial.println("[Modem::discoverDevices] Waiting for start-of-discovery notification...");
+    while (!tmp.equals("OK+DISCS")) {
+        if (!readResponse(tmp)) {
+            Serial.println("[Modem::discoverDevices] Timed out waiting for start-of-discovery notification");
+            return false;
+        }
+        //Serial.print("[Modem::discoverDevices] new notification: ");
+        //Serial.println("tmp");
+    }
+    //Serial.println("[Modem::discoverDevices] Discovery started");
+    // We got the "DISCS" response... we can't get off this train until we get OK+DISCE, or readResponse fails
+    startCommandTimer(5050);
+    
+    while (1) {
+        if (!readResponse(tmp)) {
+            //Serial.println("[Modem::discoverDevices] No new responses found");
+            yield();
             continue;
-        } else if (entry.startsWith("OK+DIS0:")) {
-            long start;
-            long end;
-            devices[i].id = i;
+        }
+        if (tmp.equals("OK+DISCE") || commandTimedOut()) {
+            break;
+        }
 
-            start = strlen("DIS0");
-            end = entry.indexOf(':', start);
-            devices[i].mac = entry.substring(start, end);
-
-            start = end + 1;
-            end = entry.indexOf(':', start);
-            // devices[i].power = entry.substring(start, end);
-
-            start = end + 1;
-            end = entry.indexOf(':', start);
-            devices[i].name = entry.substring(start, end);
-
-            deviceCount = ++i;
+        //Serial.print("[Modem::discoverDevices] Discovery result: ");
+        //Serial.println(tmp);
+        if (tmp.startsWith("OK+DIS")) {
+            String deviceData = tmp.substring(strlen("OK+DIS"));
+            //Serial.print("[Modem::discoverDevices] Sending device data for parsing: ");
+            //Serial.println(deviceData);
+            parseDiscoveredDevice(deviceData);
+        } else if (tmp.length() == 0) {
+            continue;
         } else {
-            Serial.print("Unhandled discovery entry: ");
-            Serial.println(entry);
+            Serial.print("[Modem::discoverDevices] Unhandled discovery entry: ");
+            Serial.println(tmp);
         }
     }
-
+    //Serial.print("[Modem::discoverDevices] Discovery completed. Found ");
+    //Serial.print(deviceCount);
+    //Serial.println(" devices.");
     return true;
+}
+
+bool Modem::discoverDevicesAsync() {
+    if (discoveringDevices) {
+        return false;
+    }
+
+    deviceCount = 0;
+    drainResponses();
+
+    String tmp;
+    startCommandTimer(BLE_TIMEOUT);
+    stream.print("AT+DISC?");
+    expireCommandTimer();
+    if (!readResponse(tmp)) {
+        return false;
+    }
+    while (!tmp.equals("OK+DISCS")) {
+        if (!readResponse(tmp)) {
+            return false;
+        }
+    }
+    discoveringDevices = true;
+    return true;
+}
+
+bool Modem::discoverDevicesAsyncComplete() {
+    drainResponses();
+    return discoveringDevices;
 }
 
 uint8_t Modem::devicesCount() { return deviceCount; }
@@ -437,84 +503,6 @@ bool Modem::getDevice(uint8_t id, device_t &device) {
         return false;
     } else {
         device = devices[id];
-        return true;
-    }
-}
-
-// AT+DISI? -> OK+DISC????
-bool Modem::discoverBeacons() {
-    beaconCount = 0;
-    drainResponses();
-    stream.print("AT+DISI?");
-    // TODO: convert to readResponse();
-    String resp = stream.readString();
-
-    // TODO: Only error out here if we exceed a timeout without receiving the
-    // OK+DISCS response
-    if (resp.indexOf("OK+DISCS") < 0) {
-        return false;
-    }
-
-    // We got the "DISCS" response... we can't get off this train until we
-    // receive DISCE (TODO: or perhaps if we've exceeded the scan timeout)
-    String discbuf = resp.substring(resp.indexOf("OK+DISCS"));
-    while (!discbuf.endsWith("OK+DISCE")) {
-        discbuf.concat(stream.readString());
-    }
-
-    Serial.println(discbuf);
-
-    for (int i = 0;
-         i < BLE_MAX_DISCOVERED_DEVICES && !discbuf.startsWith("OK+DISCE");) {
-        unsigned int end = discbuf.indexOf("OK+", 1);
-        String entry = discbuf.substring(0, end);
-        discbuf = discbuf.substring(end);
-        if (entry.equals("OK+DISCS")) {
-            continue;
-        } else if (entry.startsWith("OK+DIS0:")) {
-            long start = strlen("DIS");
-            long end = entry.indexOf(':', start);
-            beacons[i].id = i;
-            beacons[i].factory_id = entry.substring(start, end);
-            start = end + 1;
-            end = entry.indexOf(':', start);
-            beacons[i].uuid = entry.substring(start, end);
-            start = end + 1;
-            end = entry.indexOf(':', start);
-            beacons[i].majorVersion = entry.substring(start, end);
-            start = end + 1;
-            end = entry.indexOf(':', start);
-            beacons[i].minorVersion = entry.substring(start, end);
-            start = end + 1;
-            end = entry.indexOf(':', start);
-            beacons[i].minorVersion = entry.substring(start, end);
-            start = end + 1;
-            end = entry.indexOf(':', start);
-            beacons[i].power = entry.substring(start, end);
-            start = end + 1;
-            end = entry.indexOf(':', start);
-            beacons[i].mac = entry.substring(start, end);
-            start = end + 1;
-            end = entry.indexOf(':', start);
-            beacons[i].rssi = entry.substring(start, end);
-
-            beaconCount = ++i;
-        } else {
-            Serial.print("Unhandled discovery entry: ");
-            Serial.println(entry);
-        }
-    }
-
-    return true;
-}
-
-uint8_t Modem::beaconsCount() { return beaconCount; }
-
-bool Modem::getBeacon(uint8_t id, beacon_t &beacon) {
-    if (id >= beaconCount) {
-        return false;
-    } else {
-        beacon = beacons[id];
         return true;
     }
 }
@@ -534,12 +522,14 @@ bool Modem::enableCharacteristic2(bool enable) {
 // AT+FLOW? not supported yet as of V1 datasheet
 // AT+FLOW[0-1] not supported yet as of V1 datasheet
 
+// This command doesn't seem to be recognized by my HM-19 modem
 // AT+GAIT? -> OK+Get:[0-1]
 bool Modem::highTxGainEnabled(bool &enabled) {
     String cmd("GAIT");
     return getBool(cmd, enabled);
 }
 
+// This command doesn't seem to be recognized by my HM-19 modem
 // AT+GAIT[0-1] -> OK+Set:[0-1]
 bool Modem::enableHighTxGain(bool enable) {
     String cmd("GAIT");
@@ -561,7 +551,9 @@ bool Modem::enableHighRxGain(bool enable) {
 // AT+HELP? -> String
 String Modem::help() {
     drainResponses();
+    startCommandTimer(BLE_TIMEOUT);
     stream.print("AT+HELP?");
+    expireCommandTimer();
     String tmp = stream.readString();
     int start = tmp.indexOf("OK");
     if (start >= 0) {
@@ -583,103 +575,17 @@ bool Modem::enableManualStartup(bool enable) {
     String cmd("IMME");
     return setBool(cmd, enable);
 }
-// AT+IBEA? -> OK+Get:[0-1]
-bool Modem::beaconEnabled(bool &enabled) {
-    String cmd("IBEA");
-    return getBool(cmd, enabled);
-}
-
-// AT+IBEA[0-1] -> OK+Set:[0-1]
-bool Modem::enableBeacon(bool enable) {
-    String cmd("IBEA");
-    return setBool(cmd, enable);
-}
-
-bool Modem::getBeaconUuid(String &uuid) {
-    String builder;
-    String tmp;
-    for (int i = 0; i < 4; i++) {
-        if (!getBeaconUuidPart(i, tmp)) {
-            return false;
-        }
-        builder.concat(tmp);
-    }
-    uuid = builder;
-    return true;
-}
-
-// AT+IBE0? -> OK+Get:[0-F]{4}, AT+IBE1, AT+IBE2, AT+IBE3
-bool Modem::getBeaconUuidPart(uint8_t quad, String &uuid) {
-    String cmd("IBE");
-    String part(quad, HEX);
-    cmd.concat(part);
-    return sendQueryCommand(cmd, uuid);
-}
-
-bool Modem::setBeaconUuid(const String &uuid) {
-    for (int i = 0; i < 4; i++) {
-        String part = uuid.substring(i * 8, (i + 1) * 8);
-        if (!setBeaconUuidPart(i, part)) {
-            return false;
-        }
-    }
-    return true;
-}
-
-// AT+IBE0[0-F]{4} -> OK+Set:[0-F]{4}, AT+IBE1, AT+IBE2, AT+IBE3
-bool Modem::setBeaconUuidPart(uint8_t quad, const String &uuid) {
-    String cmd("IBE");
-    String part(quad, HEX);
-    cmd.concat(part);
-    return sendSetCommand(cmd, uuid);
-}
-
-// AT+MARJ? -> OK+Get:[0-F]{4}
-bool Modem::getBeaconMajorVersion(String &version) {
-    String cmd("MARJ");
-    return sendQueryCommand(cmd, version);
-}
-
-// AT+MARJ[0-F]{4} -> OK+Set:[0-F]{4}
-bool Modem::setBeaconMajorVersion(const String &version) {
-    String cmd("MARJ");
-    return sendSetCommand(cmd, version);
-}
-
-// AT+MINO? -> OK+Get:[0-F]{4}
-bool Modem::getBeaconMinorVersion(String &version) {
-    String cmd("MINO");
-    return sendQueryCommand(cmd, version);
-}
-
-// AT+MINO[0-F]{4} -> OK+Set:[0-F]{4}
-bool Modem::setBeaconMinorVersion(const String &version) {
-    String cmd("MINO");
-    return sendSetCommand(cmd, version);
-}
-
-// AT+MEAS? -> OK+Get:[0-F]{2}
-bool Modem::getBeaconMeasuredPower(String &power) {
-    String cmd("MEAS");
-    return sendQueryCommand(cmd, power);
-}
-
-// AT+MEAS[0-F]{2} -> OK+Set:[0-F]{2}
-bool Modem::setBeaconMeasuredPower(const String &power) {
-    String cmd("MEAS");
-    return sendSetCommand(cmd, power);
-}
 
 // AT+MODE? -> OK+Get:[0-2]
 bool Modem::getUartMode(mode_t &mode) {
     String cmd("MODE");
-    return getByte(cmd, (uint8_t &)mode);
+    return getHexDigit(cmd, (uint8_t &)mode);
 }
 
 // AT+MODE[0-2] -> OK+Set:[0-2]
 bool Modem::setUartMode(mode_t mode) {
     String cmd("MODE");
-    return setByte(cmd, (uint8_t)mode);
+    return setHexDigit(cmd, (uint8_t)mode);
 }
 
 // AT+NOTI? -> OK+Get:[0-1]
@@ -721,13 +627,13 @@ bool Modem::setModuleName(const String &name) {
 // AT+PARI? -> OK+Get:[0-2]
 bool Modem::getParity(parity_t &parity) {
     String cmd("PARI");
-    return getByte(cmd, (uint8_t &)parity);
+    return getHexDigit(cmd, (uint8_t &)parity);
 }
 
 // AT+PARI[0-2] -> OK+Set:[0-2]
 bool Modem::setParity(parity_t parity) {
     String cmd("PARI");
-    return setByte(cmd, (uint8_t)parity);
+    return setHexDigit(cmd, (uint8_t)parity);
 }
 
 // AT+PIO[1-B]? -> OK+PIO[1-B]:[0-1]
@@ -767,13 +673,13 @@ bool Modem::enableAutoSleep(bool enable) {
 // AT+POWE? -> OK+Get:[0-7]
 bool Modem::getModulePower(power_t &power) {
     String cmd("POWE");
-    return getByte(cmd, (uint8_t &)power);
+    return getHexDigit(cmd, (uint8_t &)power);
 }
 
 // AT+POWE[0-7] -> OK+Set:[0-7]
 bool Modem::setModulePower(power_t power) {
     String cmd("POWE");
-    return setByte(cmd, (uint8_t)power);
+    return setHexDigit(cmd, (uint8_t)power);
 }
 
 // AT+RELI? -> OK+Get:[0-1]
@@ -796,7 +702,7 @@ bool Modem::resetConfiguration() {
 }
 
 // AT+RESET -> OK+RESET
-bool Modem::reset() {
+bool Modem::softReset() {
     String cmd("RESET");
     String resp;
     return sendCommand(cmd, resp);
@@ -805,55 +711,64 @@ bool Modem::reset() {
 // AT+ROLE? -> OK+Get:[0-1]
 bool Modem::getRole(role_t &role) {
     String cmd("ROLE");
-    return getByte(cmd, (uint8_t &)role);
+    if (!getHexDigit(cmd, (uint8_t &)role)) {
+        return false;
+    }
+    return true;
 }
 
 // AT+ROLE[0-1] -> OK+Set:[0-1]
 bool Modem::setRole(role_t role) {
     String cmd("ROLE");
-    return setByte(cmd, (uint8_t)role);
+    return setHexDigit(cmd, (uint8_t)role);
 }
 
 // AT+RADD? -> OK+RADD:[0-F]{6}
 bool Modem::getLastConnected(String &address) {
     String cmd("RADD");
-    return sendQueryCommand(cmd, address);
+    if (!sendQueryCommand(cmd, address)) {
+        return false;
+    }
+    if (address.equals("000000000000")) {
+        address = "";
+    }
+    return true;
 }
 
 // AT+RESP? -> OK+Get:[0-2]
 bool Modem::getTalkMethod(talk_t &method) {
     String cmd("RESP");
-    return getByte(cmd, (uint8_t &)method);
+    return getHexDigit(cmd, (uint8_t &)method);
 }
 
 // AT+RESP[0-2] -> OK+Set:[0-2]
 bool Modem::setTalkMethod(talk_t method) {
     String cmd("RESP");
-    return setByte(cmd, (uint8_t)method);
+    return setHexDigit(cmd, (uint8_t)method);
 }
 
 // AT+SYSK? -> OK+Get:[0-1]
 bool Modem::getSystemKeySetting(system_key_t &key_setting) {
     String cmd("SYSK");
-    return getByte(cmd, (uint8_t &)key_setting);
+    return getHexDigit(cmd, (uint8_t &)key_setting);
 }
 
 // AT+SYSK[0-1] -> OK+Set:[0-1]
 bool Modem::setSystemKeySetting(system_key_t key_setting) {
     String cmd("SYSK");
-    return setByte(cmd, (uint8_t)key_setting);
+    return setHexDigit(cmd, (uint8_t)key_setting);
 }
 
 // AT+STOP? -> OK+Get:[0-1]
 bool Modem::getStopBit(stop_t &stop_bit) {
     String cmd("STOP");
-    return getByte(cmd, (uint8_t &)stop_bit);
+    return getHexDigit(cmd, (uint8_t &)stop_bit);
 }
 
 // AT+STOP[0-1] -> OK+Set:[0-1]
 bool Modem::setStopBit(stop_t stop_bit) {
     String cmd("STOP");
-    return setByte(cmd, (uint8_t)stop_bit);
+    return setHexDigit(cmd, (uint8_t)stop_bit);
 }
 
 // AT+SLEEP -> OK+SLEEP
@@ -873,13 +788,13 @@ bool Modem::start() {
 // AT+SCAN? -> OK+Get[1-5]
 bool Modem::getScanDuration(uint8_t &seconds) {
     String cmd("SCAN");
-    return getByte(cmd, seconds);
+    return getHexDigit(cmd, seconds);
 }
 
 // AT+SCAN[1-5] -> OK+Set[1-5]
 bool Modem::setScanDuration(uint8_t seconds) {
     String cmd("SCAN");
-    return setByte(cmd, seconds);
+    return setHexDigit(cmd, seconds);
 }
 
 // AT+SAVE? -> OK+Get:[0-1]
@@ -901,6 +816,7 @@ bool Modem::nameDiscoveryEnabled(bool &enabled) {
 }
 
 // AT+SHOW[0-1] -> OK+Set:[0-1]
+// NOTE: Observed not to get OK responses? x1
 bool Modem::enableNameDiscovery(bool enable) {
     String cmd("SHOW");
     return setBool(cmd, enable);
@@ -925,6 +841,20 @@ bool Modem::getFirmwareVersion(String &fwver) {
 }
 
 // Helper methods
+void Modem::startCommandTimer(unsigned long timeout) {
+    commandTimeout = timeout + millis();
+}
+
+void Modem::expireCommandTimer() {
+    while(!commandTimedOut()) {
+        yield();
+    }
+}
+
+bool Modem::commandTimedOut() {
+    return millis() >= commandTimeout;
+}
+
 bool Modem::readResponse(String &resp, unsigned long timeout) {
     // Save the current timeout so we can restore it after the read operation
     unsigned long old_timeout = stream.getTimeout();
@@ -940,53 +870,80 @@ bool Modem::readResponse(String &resp, unsigned long timeout) {
 bool Modem::readResponse(String &resp) {
     // Take whatever's ready within the timeout already set, and add it to the
     // buf
-    responseBuf += stream.readString();
+    unsigned long last_size;
+    do {
+        last_size = responseBuf.length();
+        responseBuf += stream.readString();
+    } while (last_size != responseBuf.length());
+    //Serial.print("[Modem::readResponse] Current buffer contents: ");
+    //Serial.println(responseBuf);
 
-    // Parse out the next response from the buffer
+    // Parse out the next response from the buffer, handling notifications,
+    // until we get to the first non-notification response
     String tmp;
-    int startResp = responseBuf.indexOf("OK");
-    int endResp = responseBuf.indexOf("OK", startResp + 1);
-
-    if (startResp >= 0 && endResp >= 0) {
-        tmp = responseBuf.substring(startResp, endResp);
-        responseBuf = responseBuf.substring(endResp);
-    } else if (startResp >= 0) {
-        tmp = responseBuf.substring(startResp);
-        responseBuf = "";
-    } else {
-        return false;
-    }
-
-    // Divert notifications into object storage rather than returning them
-    bool isNotification = false;
-    if (tmp.equals("OK+LOST")) {
-        connected = false;
-        isNotification = true;
-    } else if (tmp.equals("OK+CONN")) {
-        connected = true;
-        isNotification = true;
-    } else if (tmp.startsWith("OK+CONN:")) {
-        // Requires AT+NOTI1 and AT+NOTP1 message
-        connected = true;
-        remoteAddress = tmp.substring(strlen("OK+CONN:"));
-        isNotification = true;
-    } else if (tmp.startsWith("OK+NAME:") &&
-               responseBuf.indexOf("OK+DISCE") != -1) {
-        // Requires AT+SHOW1, maybe also AT+NOTI1
-        devices[deviceCount - 1].name = tmp.substring(strlen("OK+NAME:"));
-        isNotification = true;
-    }
-    if (isNotification) {
-        return readResponse(resp);
+    bool ready = false;
+    while (!ready) {
+        int startResp = responseBuf.indexOf("OK");
+        int endResp = responseBuf.indexOf("OK", startResp + 1);
+    
+        if (startResp >= 0 && endResp >= 0) {
+            tmp = responseBuf.substring(startResp, endResp);
+            responseBuf = responseBuf.substring(endResp);
+        } else if (startResp >= 0) {
+            tmp = responseBuf.substring(startResp);
+            responseBuf = "";
+        } else {
+            //Serial.print("[Modem::readResponse] No responses found: '");
+            //Serial.print(responseBuf);
+            //Serial.println("'");
+            return false;
+        }
+        tmp.trim();
+        ready = true;
+  
+        // Handle notifications
+        // If response is a notification, set the "ready" flag false to process another response
+        if (discoveringDevices) {
+            if (tmp.equals("OK+DISCE")) {
+                discoveringDevices = false;
+                ready = false;
+            } else if (tmp.startsWith("OK+DIS")) {
+                String deviceData = tmp.substring(strlen("OK+DIS"));
+                parseDiscoveredDevice(deviceData);
+                ready = false;
+            } else if (tmp.startsWith("OK+NAME:")) {
+                // Requires AT+SHOW1, maybe also AT+NOTI1
+                devices[deviceCount - 1].name = tmp.substring(strlen("OK+NAME:"));
+                ready = false;
+            }
+        }
+        if (tmp[3] == 'L' && tmp.startsWith("OK+LOST:")) {
+            connected = false;
+            ready = false;
+        } else if (tmp[3] == 'C' && tmp.equals("OK+CONN")) {
+            connected = true;
+            ready = false;
+        } else if (tmp[3] == 'C' && tmp.startsWith("OK+CONN:")) {
+            // Requires AT+NOTI1 and AT+NOTP1 message
+            connected = true;
+            remoteAddress = tmp.substring(strlen("OK+CONN:"));
+            ready = false;
+        }
+        if (!ready) {
+            Serial.print("[Modem::readResponse] Handled ");
+            Serial.print(tmp);
+            Serial.println(" notification.");
+        }
     }
 
     resp = tmp;
+    //Serial.print("[Modem::readResponse] Returning response ");
+    //Serial.println(resp);
     return true;
 }
 
 void Modem::putBackResponse(const String &resp) {
-    String newResp(resp + responseBuf);
-    responseBuf = newResp;
+    responseBuf = resp + responseBuf;
 }
 
 void Modem::drainResponses() {
@@ -994,6 +951,8 @@ void Modem::drainResponses() {
     // sure notifications still get handled
     String tmp;
     while (readResponse(tmp, 1)) {
+        Serial.print("[Modem::drainResponse] Drained response ");
+        Serial.println(tmp);
         yield();
     }
     // All notifications handled.  Burn that sucker to the ground!
@@ -1001,34 +960,82 @@ void Modem::drainResponses() {
     return;
 }
 
+void Modem::parseDiscoveredDevice(const String &deviceData) {
+    long start, end;
+    start = 0;
+    end = deviceData.indexOf(':', start);
+    uint8_t idx = deviceData.substring(start, end).toInt();
+    devices[idx].id = idx;
+
+    start = end + 1;
+    end = deviceData.indexOf(':', start);
+    devices[idx].mac = deviceData.substring(start, end);
+
+    start = end + 1;
+    end = deviceData.indexOf(':', start);
+    // devices[idx].power = deviceData.substring(start, end);
+
+    start = end + 1;
+    end = deviceData.indexOf(':', start);
+    devices[idx].name = deviceData.substring(start, end);
+
+    /*
+    Serial.print("[Modem::parseDiscoveredDevices] Found device ");
+    Serial.print(idx);
+    Serial.print(" MAC ");
+    Serial.print(devices[idx].mac);
+    Serial.print(" [");
+    Serial.print(devices[idx].name);
+    Serial.println("]");
+    */
+    
+    deviceCount = idx + 1;
+}
+
 bool Modem::sendCommand(const String &args, String &response) {
+    drainResponses();
     String command("AT");
     if (args.length()) {
         command.concat("+");
     }
-    drainResponses();
-    stream.print(command);
-    stream.print(args);
+    //Serial.print("[Modem::sendCommand] Sending command ");
+    //Serial.println(command+args);
+    startCommandTimer(BLE_TIMEOUT);
+    stream.print(command+args);
+    expireCommandTimer();
     String tmp;
     if (!readResponse(tmp)) {
+        Serial.print("[Modem::sendCommand] No response to command ");
+        Serial.println(command+args);
         return false;
     }
     response = tmp.substring(command.length());
+    //Serial.print("[Modem::sendCommand] Successful command. Response ");
+    //Serial.println(response);
     return true;
 }
 
 bool Modem::sendQueryCommand(const String &cmd, String &response) {
     String query(cmd + "?");
     String tmp;
+    //Serial.print("[Modem::sendQueryCommand] ");
+    //Serial.println(query);
     if (!sendCommand(query, tmp)) {
+        Serial.println("[Modem::sendQueryCommand] Failed.");
         return false;
     }
+    //Serial.print("[Modem::sendQueryCommand] Query response: ");
+    //Serial.println(tmp);
     while (!tmp.startsWith("Get:")) {
+        //Serial.print("[Modem::sendQueryCommand] Invalid reply to Get request: ");
+        //Serial.println(tmp);
         if (!readResponse(tmp)) {
             return false;
         }
     }
     response = tmp.substring(strlen("Get:"));
+    //Serial.print("[Modem::sendQueryCommand] Successful reply ");
+    //Serial.println(response);
     return true;
 }
 
@@ -1036,10 +1043,16 @@ bool Modem::sendSetCommand(const String &cmd, const String &args) {
     String set(cmd + args);
     String tmp;
     if (!sendCommand(set, tmp)) {
+        //Serial.print("[Modem::sendSetCommand] Failed sending command ");
+        //Serial.println(set);
         return false;
     }
     String validreply("Set:" + args);
     while (!tmp.equals(validreply)) {
+        //Serial.print("[Modem::sendSetCommand] Invalid reply to Set request: ");
+        //Serial.println(tmp);
+        //Serial.print("[Modem::sendSetCommand] Expected reply: ");
+        //Serial.println(validreply);
         if (!readResponse(tmp)) {
             return false;
         }
@@ -1047,40 +1060,39 @@ bool Modem::sendSetCommand(const String &cmd, const String &args) {
     return true;
 }
 
-bool Modem::getBool(const String &cmd, bool &val) {
+bool Modem::getHexDigit(const String &cmd, uint8_t &val) {
     String tmp;
+    //Serial.print("[Modem::getHexDigit] ");
+    //Serial.println(cmd);
     if (!sendQueryCommand(cmd, tmp)) {
+        //Serial.println("[Modem::getHexDigit] Failed");
         return false;
     }
-    while (tmp.length() > 1 && tmp[0] != '0' && tmp[0] != '1') {
+    while (tmp.length() != 1) {
+        //Serial.print("[Modem::getHexDigit] Discarded response for being the wrong size: ");
+        //Serial.println(tmp);
         if (!readResponse(tmp)) {
             return false;
         }
     }
-    val = (bool)(tmp[0] - '0');
+    val = strtoul(tmp.c_str(), NULL, 16);
+    return true;
+}
+
+bool Modem::setHexDigit(const String &cmd, uint8_t val) {
+    String intval(val, HEX);
+    return sendSetCommand(cmd, intval);
+}
+
+bool Modem::getBool(const String &cmd, bool &val) {
+    uint8_t tmp;
+    if (!getHexDigit(cmd, tmp)) {
+        return false;
+    }
+    val = (bool)tmp;
     return true;
 }
 
 bool Modem::setBool(const String &cmd, bool val) {
-    String intval((uint8_t)val, HEX);
-    return sendSetCommand(cmd, intval);
-}
-
-bool Modem::getByte(const String &cmd, uint8_t &val) {
-    String tmp;
-    if (!sendQueryCommand(cmd, tmp)) {
-        return false;
-    }
-    while (tmp.length() != 1) {
-        if (!readResponse(tmp)) {
-            return false;
-        }
-    }
-    val = tmp[0];
-    return true;
-}
-
-bool Modem::setByte(const String &cmd, uint8_t val) {
-    String intval((uint8_t)val, HEX);
-    return sendSetCommand(cmd, intval);
+    return setHexDigit(cmd, (uint8_t)val);
 }
