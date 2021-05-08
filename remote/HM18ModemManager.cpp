@@ -6,77 +6,68 @@ void Modem::enableStateDetection(int pinNumber) {
     pinMode(statePin, INPUT);
 }
 
+void Modem::statePinBlinks(bool blinks) { stateBlinks = blinks; }
+
 bool Modem::readState() {
-    if (statePin != -1) {
-        //Serial.print("[Modem::readState] Reading from State pin ");
-        //Serial.println(statePin);
-        // blink = disconnected
-        // solid = connected
-        
+    if (statePin == -1) {
+        return false;
+    }
+    // Serial.print("[Modem::readState] Reading from State pin ");
+    // Serial.println(statePin);
+    // blink = disconnected
+    // solid = connected
+
+    if (stateBlinks) {
         unsigned long p1 = pulseIn(statePin, HIGH, 2000000);
         unsigned long p2 = pulseIn(statePin, LOW, 2000000);
-        if (p1 && p2) {
-            //Serial.println("State pin is blinking");
-        } else {
-            int state = digitalRead(statePin);
-            if (p1 || p2) {
-                //Serial.println("State pin has transitioned to ");
-                //Serial.println(state);
-            } else if (state == HIGH) {
-                //Serial.println("[Modem::readState] Connection state LED is solid ON");
-                return true;
-            } else {
-                Serial.println("[Modem::readState] Connection state LED is solid OFF");
-            }
+        if (p1 > 0 && p2 > 0) {
+            Serial.println("State pin is blinking");
+            return false;
         }
     }
-    return false;
+    int state = digitalRead(statePin);
+    if (state == HIGH) {
+        // Serial.println("[Modem::readState] Connection state LED is solid
+        // ON");
+    } else {
+        // Serial.println("[Modem::readState] Connection state LED is solid
+        // OFF");
+    }
+    return state == HIGH;
 }
 
 bool Modem::makeCentral() {
-    //Serial.println("[Modem::makeCentral] Ensuring we're in immediate mode");
+    // Serial.println("[Modem::makeCentral] Ensuring we're in immediate mode");
     // AT+IMME1
-    bool cur_manualstart;
-    if (manualStartupEnabled(cur_manualstart) && !cur_manualstart) {
-        //Serial.println("[Modem::makeCentral] Not in immediate mode. Switching...");
-        if (!enableManualStartup(true)) {
-            // TODO: in case of failure, rebuild the prior state?
-            Serial.println("[Modem::makeCentral] Failed to switch into immediate mode");
-            return false;
-        }
+    if (!enableManualStartup(true)) {
+        // TODO: in case of failure, rebuild the prior state?
+        Serial.println(
+            "[Modem::makeCentral] Failed to switch into immediate mode");
+        return false;
     }
-    //Serial.println("[Modem::makeCentral] In immediate mode");
-    //Serial.println("[Modem::makeCentral] Ensuring we're in central role");
+    // Serial.println("[Modem::makeCentral] In immediate mode");
+
+    // Serial.println("[Modem::makeCentral] Ensuring we're in central role");
     // AT+ROLE1
-    role_t cur_role;
-    if (getRole(cur_role) && cur_role != role_t::cCentral) {
-        //Serial.println("[Modem::makeCentral] Not in central role. Switching...");
-        if (!setRole(role_t::cCentral)) {
-            Serial.println("[Modem::makeCentral] Failed to switch into central role");
-            return false;
-        }
+    if (!setRole(role_t::cCentral)) {
+        Serial.println(
+            "[Modem::makeCentral] Failed to switch into central role");
+        return false;
     }
-    //Serial.println("[Modem::makeCentral] In central role");
+    // Serial.println("[Modem::makeCentral] In central role");
     return true;
 }
 
 bool Modem::makePeripheral(bool autostart) {
     // AT+IMME[0-1]
-    bool cur_manualstart;
     bool want_manualstart = !autostart;
-    if (manualStartupEnabled(cur_manualstart) &&
-        cur_manualstart != want_manualstart) {
-        if (!enableManualStartup(want_manualstart)) {
-            // TODO: in case of failure, rebuild the prior state?
-            return false;
-        }
+    if (!enableManualStartup(want_manualstart)) {
+        // TODO: in case of failure, rebuild the prior state?
+        return false;
     }
     // AT+ROLE0
-    role_t cur_role;
-    if (getRole(cur_role) && cur_role != role_t::cPeripheral) {
-        if (!setRole(role_t::cPeripheral)) {
-            return false;
-        }
+    if (!setRole(role_t::cPeripheral)) {
+        return false;
     }
     return true;
 }
@@ -84,10 +75,12 @@ bool Modem::makePeripheral(bool autostart) {
 bool Modem::isConnected() {
     drainResponses();
     if (statePin != -1) {
-        //Serial.println("[Modem::isConnected] Reading connection state pin");
+        // Serial.println("[Modem::isConnected] Reading connection state pin");
         return readState();
     } else {
-        //Serial.println("[Modem::isConnected] Cannot validate current connection state, but a connection has been made before this session");
+        // Serial.println("[Modem::isConnected] Cannot validate current
+        // connection state, but a connection has been made before this
+        // session");
         return connected;
     }
 }
@@ -262,18 +255,19 @@ bool Modem::reconnect(response_t &response, bool waitForConnection) {
     stream.print(cmd);
     expireCommandTimer();
 
-    // OK+CONNF may take ~10 seconds to be reported
     String tmp;
-    if (!readResponse(tmp, 10100)) {
+    if (!readResponse(tmp)) {
         return false;
     }
 
+    // If OK+CONNL, second response OK+CONNF may take ~10 seconds to be reported
     switch (tmp[strlen("OK+CONN")]) {
     case 'L':
         Serial.println("Request response: Connecting");
         response = response_t::cReconnecting;
-        if (waitForConnection) {
-            waitConnected(10100);
+        if (waitForConnection && readResponse(tmp, 10100) &&
+            tmp.equals("OK+CONNF")) {
+            response = response_t::cFail;
         }
         break;
     case 'E':
@@ -303,32 +297,35 @@ bool Modem::connectId(uint8_t id, response_t &response,
     String val(id, HEX);
     cmd.concat(val);
     drainResponses();
-    //Serial.print("[Modem::connectId] Connecting to device with id ");
-    //Serial.println(val);
+    // Serial.print("[Modem::connectId] Connecting to device with id ");
+    // Serial.println(val);
     startCommandTimer(BLE_TIMEOUT);
     stream.print(cmd);
     expireCommandTimer();
-    // OK+CONNF may take ~10 seconds to be reported
+
     String tmp;
-    if (!readResponse(tmp, 10100)) {
-        Serial.println("[Modem::connectId] No response to connectId request.");
+    if (!readResponse(tmp)) {
         return false;
     }
 
+    // TODO: this might be wrong - I may need to watch for an OK+CONNL after
+    // this to see if it was actually successful
     String code = tmp.substring(strlen("OK+CONN"));
     if (val.equals(code)) {
-        //Serial.println("[Modem::connectId] Success");
+        // Serial.println("[Modem::connectId] Success");
         response = response_t::cConnecting;
         return true;
     }
 
-    //Serial.println("[Modem::connectId] Waiting for response code...");
+    // OK+CONNF may take ~10 seconds to be reported
+    // Serial.println("[Modem::connectId] Waiting for response code...");
     switch (code[0]) {
     case 'A':
-        //Serial.println("[Modem::connectId] Connection in progress...");
+        // Serial.println("[Modem::connectId] Connection in progress...");
         response = response_t::cConnecting;
-        if (waitForConnection) {
-            waitConnected(10100);
+        if (waitForConnection && readResponse(tmp, 10100) &&
+            tmp.equals("OK+CONNF")) {
+            response = response_t::cFail;
         }
         break;
     case 'E':
@@ -341,7 +338,7 @@ bool Modem::connectId(uint8_t id, response_t &response,
         response = response_t::cOther;
         break;
     }
-    //Serial.println("[Modem::connectId] Command complete");
+    // Serial.println("[Modem::connectId] Command complete");
     return true;
 }
 
@@ -350,20 +347,27 @@ bool Modem::connectAddress(const String &addr, response_t &response,
                            bool waitForConnection) {
     String cmd("AT+CON" + addr);
     drainResponses();
+    // Serial.print("[Modem::connectAddress] Requesting ");
+    // Serial.println(cmd);
     startCommandTimer(BLE_TIMEOUT);
     stream.print(cmd);
     expireCommandTimer();
+
     String tmp;
-    // OK+CONNF may take ~10 seconds to be reported
-    if (!readResponse(tmp, 10100)) {
+    if (!readResponse(tmp)) {
         return false;
     }
 
-    switch (tmp[strlen("OK+CONN")]) {
+    // OK+CONNF may take ~10 seconds to be reported
+    String code = tmp.substring(strlen("OK+CONN"));
+    switch (code[0]) {
     case 'A':
         response = response_t::cConnecting;
-        if (waitForConnection) {
-            waitConnected(10100);
+        // Serial.println("[Modem::connectAddress] Waiting for connection
+        // validation...");
+        if (waitForConnection && readResponse(tmp, 10100) &&
+            tmp.equals("OK+CONNF")) {
+            response = response_t::cFail;
         }
         break;
     case 'E':
@@ -376,28 +380,10 @@ bool Modem::connectAddress(const String &addr, response_t &response,
         response = response_t::cOther;
         break;
     }
+    // Serial.println("[Modem::connectAddress] Command complete");
     return true;
 }
 // TODO: connectRandom() AT+CO1??? -> OK+CO11[AEF]
-
-bool Modem::waitConnected(long timeout) {
-    Serial.println("Waiting for modem connect acknowledgment");
-
-    char ack[] = "OK+CONN";
-    unsigned long old_timeout = stream.getTimeout();
-    stream.setTimeout(timeout);
-    bool found = stream.find(ack);
-    stream.setTimeout(old_timeout);
-    if (!found) {
-        Serial.println("Timed out waiting for connect acknowledgment.");
-        return false;
-    }
-
-    Serial.print("Connection response code: ");
-    Serial.println(stream.peek());
-    Serial.println("Connect request acknowledged");
-    return true;
-}
 
 // AT+DISC? -> OK+DISCS/OK+DIS[0-F]:[0-F]{6}:-[0-9]{3}:(\w+)?/OK+DISCE
 bool Modem::discoverDevices() {
@@ -407,14 +393,15 @@ bool Modem::discoverDevices() {
 
     role_t cur_role;
     if (getRole(cur_role) && cur_role != role_t::cCentral) {
-        Serial.println("[Modem::discoverDevices] Attempting to discover when not in Central role.");
+        Serial.println("[Modem::discoverDevices] Attempting to discover when "
+                       "not in Central role.");
     }
-    
+
     deviceCount = 0;
     drainResponses();
 
     String tmp;
-    //Serial.println("[Modem::discoverDevices] Sending AT+DISC?");
+    // Serial.println("[Modem::discoverDevices] Sending AT+DISC?");
     startCommandTimer(BLE_TIMEOUT);
     stream.print("AT+DISC?");
     expireCommandTimer();
@@ -422,24 +409,28 @@ bool Modem::discoverDevices() {
         Serial.println("[Modem::discoverDevices] Discovery request failed");
         return false;
     }
-    //Serial.print("[Modem::discoverDevices] Discovery request response: ");
-    //Serial.println(tmp);
-    //Serial.println("[Modem::discoverDevices] Waiting for start-of-discovery notification...");
+    // Serial.print("[Modem::discoverDevices] Discovery request response: ");
+    // Serial.println(tmp);
+    // Serial.println("[Modem::discoverDevices] Waiting for start-of-discovery
+    // notification...");
     while (!tmp.equals("OK+DISCS")) {
         if (!readResponse(tmp)) {
-            Serial.println("[Modem::discoverDevices] Timed out waiting for start-of-discovery notification");
+            Serial.println("[Modem::discoverDevices] Timed out waiting for "
+                           "start-of-discovery notification");
             return false;
         }
-        //Serial.print("[Modem::discoverDevices] new notification: ");
-        //Serial.println("tmp");
+        // Serial.print("[Modem::discoverDevices] new notification: ");
+        // Serial.println("tmp");
     }
-    //Serial.println("[Modem::discoverDevices] Discovery started");
-    // We got the "DISCS" response... we can't get off this train until we get OK+DISCE, or readResponse fails
+    // Serial.println("[Modem::discoverDevices] Discovery started");
+    // We got the "DISCS" response... we can't get off this train until we get
+    // OK+DISCE, or readResponse fails
     startCommandTimer(5050);
-    
+
     while (1) {
         if (!readResponse(tmp)) {
-            //Serial.println("[Modem::discoverDevices] No new responses found");
+            // Serial.println("[Modem::discoverDevices] No new responses
+            // found");
             yield();
             continue;
         }
@@ -447,23 +438,24 @@ bool Modem::discoverDevices() {
             break;
         }
 
-        //Serial.print("[Modem::discoverDevices] Discovery result: ");
-        //Serial.println(tmp);
+        // Serial.print("[Modem::discoverDevices] Discovery result: ");
+        // Serial.println(tmp);
         if (tmp.startsWith("OK+DIS")) {
             String deviceData = tmp.substring(strlen("OK+DIS"));
-            //Serial.print("[Modem::discoverDevices] Sending device data for parsing: ");
-            //Serial.println(deviceData);
+            // Serial.print("[Modem::discoverDevices] Sending device data for
+            // parsing: "); Serial.println(deviceData);
             parseDiscoveredDevice(deviceData);
         } else if (tmp.length() == 0) {
             continue;
         } else {
-            Serial.print("[Modem::discoverDevices] Unhandled discovery entry: ");
+            Serial.print(
+                "[Modem::discoverDevices] Unhandled discovery entry: ");
             Serial.println(tmp);
         }
     }
-    //Serial.print("[Modem::discoverDevices] Discovery completed. Found ");
-    //Serial.print(deviceCount);
-    //Serial.println(" devices.");
+    // Serial.print("[Modem::discoverDevices] Discovery completed. Found ");
+    // Serial.print(deviceCount);
+    // Serial.println(" devices.");
     return true;
 }
 
@@ -846,28 +838,34 @@ void Modem::startCommandTimer(unsigned long timeout) {
 }
 
 void Modem::expireCommandTimer() {
-    while(!commandTimedOut()) {
+    while (!commandTimedOut()) {
         yield();
     }
 }
 
-bool Modem::commandTimedOut() {
-    return millis() >= commandTimeout;
-}
+bool Modem::commandTimedOut() { return millis() >= commandTimeout; }
 
 bool Modem::readResponse(String &resp, unsigned long timeout) {
     // Save the current timeout so we can restore it after the read operation
-    unsigned long old_timeout = stream.getTimeout();
-    stream.setTimeout(timeout);
+    unsigned long expiration = millis() + timeout;
+    bool ret = false;
 
-    bool ret = readResponse(resp);
+    while (millis() < expiration) {
+        if (processResponse(resp)) {
+            return true;
+        } else {
+            yield();
+        }
+    }
 
-    // Restore the old timeout
-    stream.setTimeout(old_timeout);
     return ret;
 }
 
 bool Modem::readResponse(String &resp) {
+    return readResponse(resp, BLE_TIMEOUT);
+}
+
+bool Modem::processResponse(String &resp) {
     // Take whatever's ready within the timeout already set, and add it to the
     // buf
     unsigned long last_size;
@@ -875,71 +873,66 @@ bool Modem::readResponse(String &resp) {
         last_size = responseBuf.length();
         responseBuf += stream.readString();
     } while (last_size != responseBuf.length());
-    //Serial.print("[Modem::readResponse] Current buffer contents: ");
-    //Serial.println(responseBuf);
+    // Serial.print("[Modem::processResponse] Current buffer contents: ");
+    // Serial.println(responseBuf);
 
     // Parse out the next response from the buffer, handling notifications,
     // until we get to the first non-notification response
     String tmp;
-    bool ready = false;
-    while (!ready) {
-        int startResp = responseBuf.indexOf("OK");
-        int endResp = responseBuf.indexOf("OK", startResp + 1);
-    
-        if (startResp >= 0 && endResp >= 0) {
-            tmp = responseBuf.substring(startResp, endResp);
-            responseBuf = responseBuf.substring(endResp);
-        } else if (startResp >= 0) {
-            tmp = responseBuf.substring(startResp);
-            responseBuf = "";
-        } else {
-            //Serial.print("[Modem::readResponse] No responses found: '");
-            //Serial.print(responseBuf);
-            //Serial.println("'");
-            return false;
-        }
-        tmp.trim();
-        ready = true;
-  
-        // Handle notifications
-        // If response is a notification, set the "ready" flag false to process another response
-        if (discoveringDevices) {
-            if (tmp.equals("OK+DISCE")) {
-                discoveringDevices = false;
-                ready = false;
-            } else if (tmp.startsWith("OK+DIS")) {
-                String deviceData = tmp.substring(strlen("OK+DIS"));
-                parseDiscoveredDevice(deviceData);
-                ready = false;
-            } else if (tmp.startsWith("OK+NAME:")) {
-                // Requires AT+SHOW1, maybe also AT+NOTI1
-                devices[deviceCount - 1].name = tmp.substring(strlen("OK+NAME:"));
-                ready = false;
-            }
-        }
-        if (tmp[3] == 'L' && tmp.startsWith("OK+LOST:")) {
-            connected = false;
-            ready = false;
-        } else if (tmp[3] == 'C' && tmp.equals("OK+CONN")) {
-            connected = true;
-            ready = false;
-        } else if (tmp[3] == 'C' && tmp.startsWith("OK+CONN:")) {
-            // Requires AT+NOTI1 and AT+NOTP1 message
-            connected = true;
-            remoteAddress = tmp.substring(strlen("OK+CONN:"));
-            ready = false;
-        }
-        if (!ready) {
-            Serial.print("[Modem::readResponse] Handled ");
-            Serial.print(tmp);
-            Serial.println(" notification.");
+
+    int startResp = responseBuf.indexOf("OK");
+    int endResp = responseBuf.indexOf("OK", startResp + 1);
+
+    if (startResp >= 0 && endResp >= 0) {
+        tmp = responseBuf.substring(startResp, endResp);
+        responseBuf = responseBuf.substring(endResp);
+    } else if (startResp >= 0) {
+        tmp = responseBuf.substring(startResp);
+        responseBuf = "";
+    } else {
+        // Serial.print("[Modem::processResponse] No responses found: '");
+        // Serial.print(responseBuf);
+        // Serial.println("'");
+        return false;
+    }
+    tmp.trim();
+
+    bool isNotification = false;
+    // Handle notifications
+    // If response is a notification, set the "ready" flag false to process
+    // another response
+    if (discoveringDevices) {
+        if (tmp.equals("OK+DISCE")) {
+            discoveringDevices = false;
+            isNotification = true;
+        } else if (tmp.startsWith("OK+DIS")) {
+            String deviceData = tmp.substring(strlen("OK+DIS"));
+            parseDiscoveredDevice(deviceData);
+            isNotification = true;
+        } else if (tmp.startsWith("OK+NAME:")) {
+            // Requires AT+SHOW1, maybe also AT+NOTI1
+            devices[deviceCount - 1].name = tmp.substring(strlen("OK+NAME:"));
+            isNotification = true;
         }
     }
+    if (tmp[3] == 'L' && tmp.startsWith("OK+LOST:")) {
+        connected = false;
+        isNotification = true;
+    } else if (tmp[3] == 'C' && tmp.equals("OK+CONN")) {
+        connected = true;
+        isNotification = true;
+    }
 
-    resp = tmp;
-    //Serial.print("[Modem::readResponse] Returning response ");
-    //Serial.println(resp);
-    return true;
+    if (isNotification) {
+        // Serial.print("[Modem::processResponse] Handled notification: ");
+        // Serial.println(tmp);
+        return false;
+    } else {
+        resp = tmp;
+        // Serial.print("[Modem::processResponse] Returning response ");
+        // Serial.println(resp);
+        return true;
+    }
 }
 
 void Modem::putBackResponse(const String &resp) {
@@ -988,7 +981,7 @@ void Modem::parseDiscoveredDevice(const String &deviceData) {
     Serial.print(devices[idx].name);
     Serial.println("]");
     */
-    
+
     deviceCount = idx + 1;
 }
 
@@ -998,44 +991,44 @@ bool Modem::sendCommand(const String &args, String &response) {
     if (args.length()) {
         command.concat("+");
     }
-    //Serial.print("[Modem::sendCommand] Sending command ");
-    //Serial.println(command+args);
+    // Serial.print("[Modem::sendCommand] Sending command ");
+    // Serial.println(command+args);
     startCommandTimer(BLE_TIMEOUT);
-    stream.print(command+args);
+    stream.print(command + args);
     expireCommandTimer();
     String tmp;
     if (!readResponse(tmp)) {
         Serial.print("[Modem::sendCommand] No response to command ");
-        Serial.println(command+args);
+        Serial.println(command + args);
         return false;
     }
     response = tmp.substring(command.length());
-    //Serial.print("[Modem::sendCommand] Successful command. Response ");
-    //Serial.println(response);
+    // Serial.print("[Modem::sendCommand] Successful command. Response ");
+    // Serial.println(response);
     return true;
 }
 
 bool Modem::sendQueryCommand(const String &cmd, String &response) {
     String query(cmd + "?");
     String tmp;
-    //Serial.print("[Modem::sendQueryCommand] ");
-    //Serial.println(query);
+    // Serial.print("[Modem::sendQueryCommand] ");
+    // Serial.println(query);
     if (!sendCommand(query, tmp)) {
         Serial.println("[Modem::sendQueryCommand] Failed.");
         return false;
     }
-    //Serial.print("[Modem::sendQueryCommand] Query response: ");
-    //Serial.println(tmp);
+    // Serial.print("[Modem::sendQueryCommand] Query response: ");
+    // Serial.println(tmp);
     while (!tmp.startsWith("Get:")) {
-        //Serial.print("[Modem::sendQueryCommand] Invalid reply to Get request: ");
-        //Serial.println(tmp);
+        // Serial.print("[Modem::sendQueryCommand] Invalid reply to Get request:
+        // "); Serial.println(tmp);
         if (!readResponse(tmp)) {
             return false;
         }
     }
     response = tmp.substring(strlen("Get:"));
-    //Serial.print("[Modem::sendQueryCommand] Successful reply ");
-    //Serial.println(response);
+    // Serial.print("[Modem::sendQueryCommand] Successful reply ");
+    // Serial.println(response);
     return true;
 }
 
@@ -1043,16 +1036,15 @@ bool Modem::sendSetCommand(const String &cmd, const String &args) {
     String set(cmd + args);
     String tmp;
     if (!sendCommand(set, tmp)) {
-        //Serial.print("[Modem::sendSetCommand] Failed sending command ");
-        //Serial.println(set);
+        // Serial.print("[Modem::sendSetCommand] Failed sending command ");
+        // Serial.println(set);
         return false;
     }
     String validreply("Set:" + args);
     while (!tmp.equals(validreply)) {
-        //Serial.print("[Modem::sendSetCommand] Invalid reply to Set request: ");
-        //Serial.println(tmp);
-        //Serial.print("[Modem::sendSetCommand] Expected reply: ");
-        //Serial.println(validreply);
+        // Serial.print("[Modem::sendSetCommand] Invalid reply to Set request:
+        // "); Serial.println(tmp); Serial.print("[Modem::sendSetCommand]
+        // Expected reply: "); Serial.println(validreply);
         if (!readResponse(tmp)) {
             return false;
         }
@@ -1062,15 +1054,15 @@ bool Modem::sendSetCommand(const String &cmd, const String &args) {
 
 bool Modem::getHexDigit(const String &cmd, uint8_t &val) {
     String tmp;
-    //Serial.print("[Modem::getHexDigit] ");
-    //Serial.println(cmd);
+    // Serial.print("[Modem::getHexDigit] ");
+    // Serial.println(cmd);
     if (!sendQueryCommand(cmd, tmp)) {
-        //Serial.println("[Modem::getHexDigit] Failed");
+        // Serial.println("[Modem::getHexDigit] Failed");
         return false;
     }
     while (tmp.length() != 1) {
-        //Serial.print("[Modem::getHexDigit] Discarded response for being the wrong size: ");
-        //Serial.println(tmp);
+        // Serial.print("[Modem::getHexDigit] Discarded response for being the
+        // wrong size: "); Serial.println(tmp);
         if (!readResponse(tmp)) {
             return false;
         }

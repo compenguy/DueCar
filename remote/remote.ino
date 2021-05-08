@@ -8,6 +8,7 @@
 
 // Initialize BLE Uart
 Modem ble(Serial1, 17);
+String targetAddress("FC694765A341");
 
 // Initialize USB Controller
 USBHost usb;
@@ -51,61 +52,40 @@ void digitalAxisChange(uint8_t id, uint8_t value) {
 }
 
 bool configureModem() {
+    Serial1.setTimeout(100);
     Serial.println("Configuring modem...");
     ble.disconnect();
-    bool enable = true;
-    if (!ble.notificationsEnabled(enable) || enable == false) {
-        ble.enableNotifications(true) || Serial.println("Notifications disabled.");  
-    }
-    if (!ble.saveLastDeviceEnabled(enable) || enable == false) {
-        ble.enableSaveLastDevice(true) || Serial.println("SaveLastDevice disabled.");    
-    }
-    if (!ble.notifyAddressOnDisconnectEnabled(enable) || enable == false ) {
-        ble.enableNotifyAddressOnDisconnect(true) || Serial.println("NotifyAddressOnDisconnect disabled.");
-    }
-    if (!ble.nameDiscoveryEnabled(enable) || enable == false) {
-        ble.enableNameDiscovery(true) || Serial.println("Name discovery disabled.");
-    }
-    if (!ble.highRxGainEnabled(enable) || enable == false) {
-        ble.enableHighRxGain(true) || Serial.println("High antenna gain disabled.");
-    }
-    /*
-    if (!ble.highTxGainEnabled(enable) || enable == false) {
-        ble.enableHighTxGain(true);
-    }
-    */
-    ble.setModulePower(Modem::power_t::cP3dbm) || Serial.println("High radio power disabled.");
-
-    if (!ble.makeCentral()) {
-        Serial.println("Error setting BLE in central mode");
-    }
+    ble.setPio(1, true);
+    ble.statePinBlinks(false);
+    ble.makeCentral() || Serial.println("Error setting BLE in central mode");
+    ble.enableNotifications(true) || Serial.println("Notifications disabled.");
+    ble.enableSaveLastDevice(true) ||
+        Serial.println("SaveLastDevice disabled.");
+    ble.enableNotifyAddressOnDisconnect(true) ||
+        Serial.println("NotifyAddressOnDisconnect disabled.");
+    ble.enableNameDiscovery(true) || Serial.println("Name discovery disabled.");
+    ble.enableHighRxGain(true) ||
+        Serial.println("High antenna rx gain disabled.");
+    // ble.enableHighTxGain(true) || Serial.println("High antenna tx gain
+    // disabled.");
+    ble.setModulePower(Modem::power_t::cP3dbm) ||
+        Serial.println("High radio power disabled.");
 }
 
 bool ensureDeviceConnection() {
     if (ble.isConnected()) {
         return true;
     }
-    Serial.println("Not connected.");
-    String lastAddress;
+    Serial.println("Ensuring target connection.");
     Modem::response_t response;
-    Serial.println("Trying last connected device...");
-    if (ble.getLastConnected(lastAddress) && lastAddress.length() && ble.reconnect(response, true) && response == Modem::response_t::cReconnecting) {
-        Serial.println("Auto-reconnected to last known device.");
+    if (ble.connectAddress(targetAddress, response, true) &&
+        response == Modem::response_t::cConnecting) {
+        Serial.println("Connected.");
         return true;
+    } else {
+        Serial.println("Not connected.");
+        return false;
     }
-    if (!ble.devicesCount()) {
-        Serial.println("Scanning...");
-        ble.discoverDevices();
-    }
-    if (ble.devicesCount()) {
-        Serial.println("Trying first discovered device in scan...");
-        if (ble.connectId(0, response, true) && response == Modem::response_t::cConnecting) {
-            Serial.println("Auto-connected to first discovered device.");
-            return true;
-        }
-    }
-    Serial.println("Failed to autoconnect.");
-    return false; 
 }
 
 void setup() {
@@ -126,7 +106,7 @@ void loop() {
         Serial.println("Writing over modem: 'f'");
         Serial1.write('f');
     } else {
-        delay(10*1000);
+        delay(10 * 1000);
     }
     delay(1000);
 }

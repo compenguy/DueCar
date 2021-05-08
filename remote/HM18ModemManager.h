@@ -117,19 +117,17 @@ class Modem {
 
     enum class stop_t : uint8_t { cOneBit = 0, cTwoBits };
 
-
   private:
     Stream &stream;
     int statePin;
+    bool stateBlinks;
 
     unsigned long commandTimeout;
     void startCommandTimer(unsigned long);
     void expireCommandTimer();
     bool commandTimedOut();
-    
+
     String responseBuf;
-
-
 
     bool discoveringDevices;
     device_t devices[BLE_MAX_DISCOVERED_DEVICES];
@@ -141,17 +139,18 @@ class Modem {
     String remoteAddress;
 
   public:
-    Modem(Stream &stream) : Modem(stream, -1) {};
+    Modem(Stream &stream) : Modem(stream, -1){};
 
     Modem(Stream &stream, int state_pin)
-        : stream(stream), statePin(statePin), discoveringDevices(false), deviceCount(0),
-          connected(false), remoteAddress() {
+        : stream(stream), statePin(statePin), discoveringDevices(false),
+          deviceCount(0), stateBlinks(true), connected(false), remoteAddress() {
 
         delay(BLE_STARTUP_DELAY);
         enableStateDetection(state_pin);
     };
 
     void enableStateDetection(int pin);
+    void statePinBlinks(bool);
     bool readState();
 
     // Convenience methods for switching between BLE peripheral and Central
@@ -159,7 +158,7 @@ class Modem {
     bool makePeripheral(bool autostart);
 
     bool isConnected();
-    
+
     // Documented modem commands
     bool disconnect();
     bool getAddress(String &);
@@ -202,7 +201,6 @@ class Modem {
     bool connectId(uint8_t, response_t &, bool waitConnected);
     bool connectAddress(const String &, response_t &, bool waitConnected);
     // bool connectRandom(response_t&);
-    bool waitConnected(long timeout);
 
     bool discoverDevices();
     bool discoverDevicesAsync();
@@ -291,6 +289,7 @@ class Modem {
     // Helper functions
     bool readResponse(String &, unsigned long timeout);
     bool readResponse(String &);
+    bool processResponse(String &);
     void putBackResponse(const String &);
     void drainResponses();
 
